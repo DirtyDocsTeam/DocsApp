@@ -411,6 +411,9 @@ def home_md(docs: Docs, published: list[Path], page_of: dict[Path, str],
             artifacts: list[Path], intro: Path | None) -> str:
     if intro:
         _, intro_body = strip_h1(intro.read_text(encoding="utf-8"))
+        # README уходит на Home как есть: относительные ссылки нужно переписать и здесь,
+        # иначе в вики они ведут на несуществующие адреса
+        intro_body, _ = rewrite_links(docs, intro, intro_body, page_of)
     else:
         intro_body = DESCRIPTION
 
