@@ -1,4 +1,4 @@
-# Синхронизация `docs/` → GitHub Wiki.
+# Синхронизация `documentation/` → GitHub Wiki.
 #
 # Что нужно один раз сделать руками (без этого job упадёт с понятной ошибкой):
 #   1. Settings → General → Features → включить Wiki и создать через UI хотя бы одну страницу:
@@ -7,8 +7,8 @@
 #      Fine-grained PAT права на вики не даёт — нужен именно классический.
 #   3. Settings → Secrets and variables → Actions → New repository secret с именем `WIKI_TOKEN`.
 #
-# Дальше всё автоматически: пуш в `main` с изменениями в `docs/` (или ручной запуск) пересобирает
-# страницы из `docs/**`, а также Home / Artifacts / _Sidebar / _Footer.
+# Дальше всё автоматически: пуш в `main` с изменениями в `documentation/` (или ручной запуск) пересобирает
+# страницы из `documentation/**`, а также Home / Artifacts / _Sidebar / _Footer.
 # Генератор — `.github/scripts/wiki_sync.py` (только stdlib, локально запускается так:
 # `python3 .github/scripts/wiki_sync.py --out /tmp/wiki-dry --no-dates`).
 
