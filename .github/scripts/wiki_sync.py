@@ -383,7 +383,7 @@ def build(docs: Docs) -> dict[str, str]:
 
     pages[HOME_FILE] = home_md(docs, published, page_of, listed, intro) + "\n" + MARKER + "\n"
     pages[ARTIFACTS_FILE] = artifacts_md(docs, listed) + "\n" + MARKER + "\n"
-    pages[SIDEBAR_FILE] = sidebar_md(docs.docs, published, page_of) + "\n" + MARKER + "\n"
+    pages[SIDEBAR_FILE] = sidebar_md(docs, published, page_of) + "\n" + MARKER + "\n"
     pages[FOOTER_FILE] = footer_page_md(docs) + "\n" + MARKER + "\n"
     return pages
 
@@ -485,25 +485,61 @@ def artifacts_md(docs: Docs, artifacts: list[Path]) -> str:
     return "\n".join(lines).rstrip()
 
 
-def sidebar_md(docs_dir: Path, published: list[Path], page_of: dict[Path, str]) -> str:
-    # группировка по первому каталогу внутри documentation/; страницы в корне documentation/ идут без заголовка
-    groups: dict[str, list[Path]] = {}
-    for p in published:
-        parts = p.relative_to(docs_dir).parts
-        section = parts[0] if len(parts) > 1 else "—"
-        groups.setdefault(section, []).append(p)
+SIDEBAR_TITLE_MAX = 64
 
-    lines = ["**[DocsApp](Home)**", "", "- [Главная](Home)", "- [Артефакты](Artifacts)", ""]
-    for section in sorted(groups):
-        if section != "—":
-            lines.append("**%s**" % section)
-            lines.append("")
+
+def short_title(text: str, fallback: str) -> str:
+    """Подпись для навигации: без ссылки на issue и без длинных хвостов."""
+    title = re.sub(r"\s*\((?:issue\s*)?#?\d+\)\s*$", "", page_title(text, fallback), flags=re.I)
+    title = re.sub(r"\s+", " ", title).strip() or fallback
+    if len(title) > SIDEBAR_TITLE_MAX:
+        cut = title[:SIDEBAR_TITLE_MAX].rsplit(" ", 1)[0] or title[:SIDEBAR_TITLE_MAX]
+        title = cut.rstrip(" ,.;:—-") + "…"
+    return title
+
+
+def sidebar_md(docs: Docs, published: list[Path], page_of: dict[Path, str]) -> str:
+    """Навигация: служебные страницы строкой, дальше разделы.
+
+    Заголовок раздела — это его лендинг (`<раздел>/README.md`), поэтому он же служит ссылкой
+    на страницу раздела и не дублируется пунктом ниже. Разделы без страниц (только лендинг)
+    уходят в конец, чтобы не раздувать навигацию пустыми блоками.
+    """
+    top: list[tuple[str, str]] = []
+    sections: dict[str, list[Path]] = {}
+    for p in published:
+        parts = p.relative_to(docs.docs).parts
+        if len(parts) > 1:
+            sections.setdefault(parts[0], []).append(p)
+        else:
+            top.append((short_title(p.read_text(encoding="utf-8"), p.stem), page_of[p.resolve()]))
+
+    links = ["[Артефакты](Artifacts)"]
+    links += ["[%s](%s)" % (title, page) for title, page in sorted(top, key=lambda item: item[1])]
+    lines = ["**[DocsApp](Home)**", "", " · ".join(links), ""]
+
+    def split_section(section: str) -> tuple[Path | None, list[Path]]:
         landing = slug(section)
-        ordered = sorted(groups[section], key=lambda q: (page_of[q.resolve()] != landing, q.name))
-        for p in ordered:
-            lines.append("- [%s](%s)" % (page_title(p.read_text(encoding="utf-8"), p.stem),
-                                         page_of[p.resolve()]))
+        landing_page = next((p for p in sections[section] if page_of[p.resolve()] == landing), None)
+        rest = [p for p in sections[section] if p is not landing_page]
+        return landing_page, rest
+
+    def section_order(section: str) -> tuple[bool, str]:
+        return (not split_section(section)[1], section)
+
+    for section in sorted(sections, key=section_order):
+        landing_page, rest = split_section(section)
+        if landing_page:
+            title = short_title(landing_page.read_text(encoding="utf-8"), section)
+            lines.append("**[%s](%s)**" % (title, slug(section)))
+        else:
+            lines.append("**%s**" % section.replace("-", " ").replace("_", " ").capitalize())
         lines.append("")
+        for p in sorted(rest, key=lambda q: page_of[q.resolve()]):
+            lines.append("- [%s](%s)" % (short_title(p.read_text(encoding="utf-8"), p.stem),
+                                         page_of[p.resolve()]))
+        if rest:
+            lines.append("")
     return "\n".join(lines).rstrip()
 
 
