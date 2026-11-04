@@ -1,0 +1,57 @@
+# Синхронизация `docs/` → GitHub Wiki.
+#
+# Что нужно один раз сделать руками (без этого job упадёт с понятной ошибкой):
+#   1. Settings → General → Features → включить Wiki и создать через UI хотя бы одну страницу:
+#      пока в вики нет ни одной страницы, git-репозитория `<repo>.wiki.git` не существует.
+#   2. Создать классический PAT со scope `repo` от аккаунта с правом записи в репозиторий.
+#      Fine-grained PAT права на вики не даёт — нужен именно классический.
+#   3. Settings → Secrets and variables → Actions → New repository secret с именем `WIKI_TOKEN`.
+#
+# Дальше всё автоматически: пуш в `main` с изменениями в `docs/` (или ручной запуск) пересобирает
+# страницы из `docs/**`, а также Home / Artifacts / _Sidebar / _Footer.
+# Генератор — `.github/scripts/wiki_sync.py` (только stdlib, локально запускается так:
+# `python3 .github/scripts/wiki_sync.py --out /tmp/wiki-dry --no-dates`).
+
+name: docs → wiki
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "documentation/**"
+      - ".github/scripts/wiki_sync.py"
+      - ".github/workflows/docs-wiki-sync.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1" # раз в неделю: подтянуть даты коммитов в индекс на главной
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-wiki-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Проверить, что секрет WIKI_TOKEN задан
+        env:
+          WIKI_TOKEN: ${{ secrets.WIKI_TOKEN }}
+        run: |
+          if [ -z "${WIKI_TOKEN}" ]; then
+            echo "::error::Секрет WIKI_TOKEN не задан. Нужен классический PAT со scope 'repo' — см. шапку .github/workflows/docs-wiki-sync.yml"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # git log нужен для колонки «Обновлено» в индексе страниц
+
+      - name: Собрать и запушить вики
+        env:
+          WIKI_TOKEN: ${{ secrets.WIKI_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: python3 .github/scripts/wiki_sync.py

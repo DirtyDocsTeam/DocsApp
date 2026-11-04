@@ -1,0 +1,184 @@
+# DocsApp — repository-wide ignore rules.
+#
+# Stacks in this repository: C#/.NET (API, Worker-C, Worker-V), Python (Worker-T,
+# Worker-G, tooling), TypeScript/React (frontend SPA), Go (S3 gateway),
+# Kotlin/JVM (optional services), SQL/PostgreSQL, and container/Kubernetes config
+# in devops/. Keep tracked files that are legitimate sources or fixtures
+# (documentation/design/*.sql, *.svg, *.drawio, schema images) out of these rules.
+
+# ---------------------------------------------------------------------------
+# Secrets and local configuration
+# Never commit credentials, tokens, keys, or tenant data (.agents/AGENTS.md).
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+secrets.json
+secrets/
+**/appsettings.local.json
+**/appsettings.*.local.json
+**/k8s/**/*secret*.yaml
+**/k8s/**/*secret*.yml
+**/kubeconfig*
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+
+# ---------------------------------------------------------------------------
+# OS and editor noise
+# ---------------------------------------------------------------------------
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+.idea/
+.vscode/
+.fleet/
+*.swp
+*.swo
+*~
+*.iml
+
+# ---------------------------------------------------------------------------
+# Logs, caches, local runtime state
+# Generated artifacts and user documents stay out of source control.
+# ---------------------------------------------------------------------------
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.cache/
+.tmp/
+/tmp/
+/pgdata/
+/data/
+/runtime/
+/storage/
+/uploads/
+/outputs/
+*.sqlite
+*.sqlite3
+
+# ---------------------------------------------------------------------------
+# Python (backend workers, automation, .github/scripts)
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.python-version
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+pip-wheel-metadata/
+pip-log.txt
+instance/
+
+# ---------------------------------------------------------------------------
+# Node / TypeScript / React (frontend)
+# ---------------------------------------------------------------------------
+node_modules/
+.pnpm-store/
+.yarn/
+.yarn-cache/
+.npm/
+*.tsbuildinfo
+.vite/
+.turbo/
+.next/
+.nuxt/
+out/
+.eslintcache
+.stylelintcache
+.parcel-cache/
+playwright-report/
+test-results/
+blob-report/
+.storybook-out/
+storybook-static/
+*.local
+
+# ---------------------------------------------------------------------------
+# C# / .NET (API, Worker-C, Worker-V)
+# ---------------------------------------------------------------------------
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+artifacts/
+TestResults/
+*.user
+*.suo
+*.userprefs
+*.dbmdl
+*.nupkg
+*.snupkg
+*.symbols.nupkg
+project.lock.json
+BenchmarkDotNet.Artifacts/
+.vs/
+
+# ---------------------------------------------------------------------------
+# Kotlin / JVM (optional services)
+# ---------------------------------------------------------------------------
+.gradle/
+local.properties
+*.class
+*.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+*.war
+*.hprof
+kotlin-js-store/
+.kotlin/
+
+# ---------------------------------------------------------------------------
+# Go (S3 gateway)
+# ---------------------------------------------------------------------------
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.prof
+coverage.html
+# Uncomment if dependencies are vendored:
+# vendor/
+
+# ---------------------------------------------------------------------------
+# Containers, observability, and load/QA output
+# ---------------------------------------------------------------------------
+*.pid
+*.seed
+docker-compose.override.yml
+.docker/
+**/otel-collector-data/
+**/grafana-data/
+**/loki-data/
