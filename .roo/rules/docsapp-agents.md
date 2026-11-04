@@ -1,0 +1,5 @@
+# DocsApp project instructions
+
+Before planning or editing, read and follow `.agents/AGENTS.md`. `.agents/` is the single source of truth for project instructions, local harnesses, skills, MCP integrations, architecture context, and code style.
+
+Do not treat this Roo Code rule as an independent rule set.

@@ -1,0 +1,8 @@
+---
+description: DocsApp project instructions
+alwaysApply: true
+---
+
+Before planning or editing, read and follow `.agents/AGENTS.md`. `.agents/` is the single source of truth for DocsApp instructions, local harnesses, skills, MCP integrations, architecture context, and code style.
+
+Do not treat this Cursor rule as an independent rule set.

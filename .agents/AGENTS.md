@@ -1,6 +1,7 @@
 # DocsApp: instructions for agents
 
 Read [`PROJECT.md`](PROJECT.md) before planning a change. It describes the product scope, architectural direction, key constraints, and terminology.
+Read [`coding-style.md`](coding-style.md) before changing code. Also read the applicable language guide from [`code-style/`](code-style/).
 
 ## Local agent resources
 
@@ -14,10 +15,15 @@ Do not invent a harness, skill, or MCP integration that is absent from the relev
 
 The registries are deliberately extensible. When an owner supplies a list of resources, add each resource to its matching registry with its purpose, location or invocation method, prerequisites, and usage notes.
 
+## Agent and harness compatibility
+
+The canonical rules live exclusively in `.agents/`. Tool-specific instruction files are compatibility adapters and must only point here; do not duplicate, fork, or override project rules in them. See [`adapters.md`](adapters.md) for supported tools and setup notes.
+
 ## Working rules
 
 - Treat this repository as an early-stage system: verify assumptions against the current code, database schema, and documentation before implementing a feature.
 - Preserve product invariants in `PROJECT.md`, especially user-data isolation, retention, security, and asynchronous job lifecycle semantics.
+- Apply the common code style and the applicable language-specific style. When they conflict with conventions already established in the touched module, preserve the local convention unless the task explicitly standardizes it.
 - Keep backend, frontend, operations, and documentation changes in their respective top-level directories unless a cross-cutting change genuinely needs more than one area.
 - Never place secrets, access tokens, user documents, generated production artifacts, or personally identifiable data in source control.
 - For conversion or rendering changes, consider failure paths, idempotency, observability, safe cleanup, and user-facing errors in addition to the happy path.
