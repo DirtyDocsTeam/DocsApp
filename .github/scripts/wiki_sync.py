@@ -206,32 +206,19 @@ class Docs:
 # ─────────────────────────── рендер артефактов ───────────────────────────
 
 def artifact_md(docs: Docs, p: Path) -> str:
-    """Как артефакт выглядит в вики: картинка — embed, остальное — ссылка (drawio — ссылка + предпросмотр)."""
+    """Строка авто-перечисления: всегда ссылка, без встраивания содержимого."""
     name = p.name
     ext = p.suffix.lower()
     size = human_size(p.stat().st_size)
     blob = docs.blob_url(p)
 
-    if ext in IMAGE_EXT:
-        return "![%s](%s)\n_%s · [оригинал](%s)_" % (name, docs.raw_url(p), size, blob)
-
     if ext in DRAWIO_EXT:
-        sibling = None
-        for cand_ext in (".png", ".svg"):
-            cand = p.with_suffix(cand_ext)
-            if cand.exists():
-                sibling = cand
-                break
-        if sibling:
-            return ("![%s](%s)\n_предпросмотр: `%s`_ · [скачать исходник](%s) · [открыть в diagrams.net](%s)"
-                    % (sibling.name, docs.raw_url(sibling), sibling.name, blob, docs.drawio_url(p)))
-        return ("- [%s](%s) — исходник draw.io (%s) · [открыть в diagrams.net](%s)\n"
-                "_предпросмотра нет: положите рядом `%s.png` (экспорт draw.io) — он встроится картинкой_"
-                % (name, blob, size, docs.drawio_url(p), p.stem))
-
+        return "- [%s](%s) — исходник draw.io (%s) · [открыть в diagrams.net](%s)" % (
+            name, blob, size, docs.drawio_url(p))
     if ext in OTHER_VIEWABLE_EXT:
-        return "- [%s](%s) — %s, GitHub показывает в браузере" % (name, blob, size)
-
+        return "- [%s](%s) — PDF (%s), открывается в браузере" % (name, blob, size)
+    if ext in IMAGE_EXT:
+        return "- [%s](%s) — изображение (%s)" % (name, blob, size)
     return "- [%s](%s) — файл (%s)" % (name, blob, size)
 
 
@@ -325,15 +312,16 @@ def guide_md() -> str:
 
 | Формат | Что делает синк |
 |---|---|
-| `.png .jpg .jpeg .gif .webp .svg .bmp .avif` | встраивается картинкой (`raw.githubusercontent.com`) + ссылка «оригинал» |
-| `.drawio` / `.dio` | ссылка на исходник + «открыть в diagrams.net»; если рядом лежит `<имя>.png` — этот PNG встраивается как предпросмотр (сам `.drawio` картинкой не рендерится) |
+| `.png .jpg .jpeg .gif .webp .svg .bmp .avif` | ссылка на файл; встроить картинку можно только явно — `![подпись](erd.svg)` в тексте страницы |
+| `.drawio` / `.dio` | ссылка на исходник + «открыть в diagrams.net» |
 | `.pdf` | ссылка (GitHub показывает PDF в браузере) |
 | всё остальное (`.docx .zip .xlsx .py .sql` …) | ссылка на файл в репозитории |
 
 4. Файл, на который никто не сослался, всё равно попадёт в вики: в авто-блок **«Файлы в этой папке»**
-   под страницей раздела и в общий инвентарь **[Artifacts](Artifacts)**.
-5. Предпросмотр для `.drawio` делается экспортом: `drawio --export --format png documentation/x.drawio` —
-   положите полученный `x.png` рядом, и он встроится автоматически.
+   под страницей раздела и в общий инвентарь **[Artifacts](Artifacts)** — в обоих местах он показан
+   ссылкой, без встраивания.
+5. Предпросмотр для `.drawio` делается экспортом: `drawio --export --format png documentation/x.drawio`.
+   Чтобы картинка появилась на странице, сослайтесь на неё в тексте: `![Схема](x.png)`.
 6. Ограничения: файлы больше ~50 МБ в git не кладём (для тяжёлых — release assets или S3 и обычная ссылка);
    секреты, токены и персональные данные в `documentation/` не коммитим.
 
@@ -342,7 +330,7 @@ def guide_md() -> str:
 | Что | Откуда | Где в вики |
 |---|---|---|
 | Страницы | `documentation/**/*.md` | по одной странице на файл, ссылки переписаны под вики |
-| Артефакты | все файлы `documentation/**`, кроме `.md` | встроены/залинкованы в странице, в авто-блоке и в `Artifacts` |
+| Артефакты | все файлы `documentation/**`, кроме `.md` | ссылки в авто-блоке и в `Artifacts`; картинка встраивается только явной ссылкой `![]()` |
 | Главная и навигация | генерируются | `Home`, `_Sidebar`, `_Footer`, `Artifacts` |
 | Описание проекта | `documentation/README.md` (если есть), иначе встроенный текст | блок «О проекте» на главной |
 
@@ -472,9 +460,8 @@ def artifacts_md(docs: Docs, artifacts: list[Path]) -> str:
 
     total = sum(a.stat().st_size for a in artifacts)
     lines = ["# Артефакты", "",
-             "Инвентарь файлов из `documentation/` (всё, что не `.md`). Картинки встроены, остальное — ссылками; "
-             "файлы, которые не отображаются в вики (`.drawio`, `.pdf`, `.docx`, `.zip`, код и т.п.), "
-             "открываются по ссылке из репозитория. Всего **%d** %s, %s." % (
+             "Инвентарь файлов из `documentation/` (всё, что не `.md`): только ссылки на файлы в репозитории, "
+             "без встраивания. Всего **%d** %s, %s." % (
                  len(artifacts), plural(len(artifacts), "файл", "файла", "файлов"), human_size(total)), "",
              "Как добавить свой артефакт — в разделе [«Как добавить артефакт»](Home#как-добавить-артефакт-картинка-диаграмма-файл) "
              "на главной.", ""]
