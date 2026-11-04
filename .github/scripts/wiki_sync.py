@@ -129,7 +129,7 @@ def read_ignore(docs: Path) -> list[str]:
 class Docs:
     def __init__(self, root: Path, repo: str, ref: str, log_dates: bool = True):
         self.root = root
-        self.docs = root / "docs"
+        self.docs = root / "documentation"
         self.repo = repo
         self.ref = ref
         self._date_cache: dict[str, str] = {}
@@ -449,7 +449,7 @@ def home_md(docs: Docs, published: list[Path], page_of: dict[Path, str],
         "## Быстрые ссылки",
         "",
         "- [Репозиторий](https://github.com/%s) · [Issues](https://github.com/%s/issues)" % (docs.repo, docs.repo),
-        "- [Все артефакты](Artifacts) · [documentation/ в репозитории](https://github.com/%s/tree/%s/docs)" % (docs.repo, docs.ref),
+        "- [Все артефакты](Artifacts) · [documentation/ в репозитории](https://github.com/%s/tree/%s/documentation)" % (docs.repo, docs.ref),
         "",
         guide_md(),
         "",
@@ -505,7 +505,7 @@ def sidebar_md(docs_dir: Path, published: list[Path], page_of: dict[Path, str]) 
 
 
 def footer_page_md(docs: Docs) -> str:
-    return ("Документация синхронизируется из [`documentation/`](https://github.com/%s/tree/%s/docs) · "
+    return ("Документация синхронизируется из [`documentation/`](https://github.com/%s/tree/%s/documentation) · "
             "сборка по коммиту от %s · править нужно в репозитории, правки в вики перезапишутся."
             % (docs.repo, docs.ref, docs.commit_date()))
 
@@ -551,7 +551,7 @@ def main() -> int:
     args = ap.parse_args()
 
     root = Path(args.root).resolve()
-    if not (root / "docs").is_dir():
+    if not (root / "documentation").is_dir():
         print("documentation/ не найдена в %s — синхронизировать нечего." % root)
         return 0
 
