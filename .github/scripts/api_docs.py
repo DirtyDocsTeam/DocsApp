@@ -51,14 +51,6 @@ SURFACE_PAGE = {
 }
 INDEX_PAGE = "index.md"
 
-MODE_LABEL = {
-    "artifact": "артефакт сборки",
-    "static": "статический разбор",
-    "empty": "контрактов нет",
-    "unsupported": "нет адаптера",
-    "disabled": "выключено в конфиге",
-}
-
 # Адаптеры: (поверхность, framework) → имя парсера. Неизвестная пара не ломает сборку.
 ADAPTERS = {
     ("rest", "quarkus"): "jvm-rest",
@@ -68,6 +60,8 @@ ADAPTERS = {
     ("graphql", "quarkus"): "jvm-graphql",
     ("graphql", "microprofile-graphql"): "jvm-graphql",
     ("graphql", "microprofile"): "jvm-graphql",
+    ("rest", "api-contracts"): "contract-yaml",
+    ("rest", "contract-yaml"): "contract-yaml",
     ("grpc", "proto"): "proto",
     ("grpc", "quarkus"): "proto",
     ("grpc", "any"): "proto",
@@ -738,6 +732,7 @@ class Resource:
     base_path: str
     line: int
     file: str = ""
+    host: str = ""
     description: str = ""
     security: str = ""
     operations: list[Operation] = field(default_factory=list)
@@ -846,7 +841,7 @@ def responses_of(method: Method, operation: Operation) -> list[tuple[str, str]]:
     if declared:
         return declared
     if not operation.returns:
-        return [("200", "тип в коде не объявлен")] if operation.method != "DELETE" \
+        return [("200", "тип не объявлен в коде")] if operation.method != "DELETE" \
             else [("204", "без тела")]
     if operation.returns in {"Unit", "void", "Nothing"}:
         return [("204", "без тела")]
@@ -1355,6 +1350,214 @@ def parse_proto(path: Path, rel: str, text: str) -> ProtoDoc:
     return ProtoParser(tokenize_proto(text), rel).parse()
 
 
+# ─────────────────── декларативные контракты (YAML) ───────────────────
+#
+# Для сервисов, чей контракт ещё не выражен кодом (или выражен не аннотациями), допускается
+# декларативный файл рядом с сервисом — как `backend/s3-gateway/api-contracts.yaml`.
+# Поддерживается подмножество YAML: отображения, списки, скаляры и блочные строки (`|`, `>`).
+# Всё остальное (flow-стиль `{}`/`[]`, якоря, теги, несколько документов) — ошибка с номером
+# строки: тихо неверный контракт хуже громкой ошибки, а полноценный YAML-парсер в стандартную
+# библиотеку Python не входит.
+
+
+class YamlSubsetError(ValueError):
+    """Синтаксис вне поддерживаемого подмножества YAML."""
+
+
+def yaml_scalar(raw: str):
+    value = raw.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+        return value[1:-1]
+    if value in {"null", "~", ""}:
+        return None
+    return value
+
+
+class YamlSubset:
+    """Минимальный YAML-читатель под декларативные контракты."""
+
+    def __init__(self, text: str, where: str = ""):
+        self.where = where or "yaml"
+        self.lines: list[tuple[int, str, int]] = []
+        for number, raw in enumerate(text.splitlines(), start=1):
+            if "\t" in raw[:len(raw) - len(raw.lstrip(" \t"))]:
+                raise YamlSubsetError("%s:%d: табуляция в отступе не поддерживается"
+                                      % (self.where, number))
+            stripped = raw.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if stripped.startswith("---"):
+                raise YamlSubsetError("%s:%d: несколько документов в одном файле не поддерживаются"
+                                      % (self.where, number))
+            indent = len(raw) - len(raw.lstrip(" "))
+            self.lines.append((indent, stripped, number))
+        self.pos = 0
+
+    def parse(self) -> dict:
+        if not self.lines:
+            return {}
+        value = self.parse_node(self.lines[0][0])
+        if self.pos < len(self.lines):
+            _, text, number = self.lines[self.pos]
+            raise YamlSubsetError("%s:%d: неожиданная строка `%s`" % (self.where, number, text))
+        if not isinstance(value, dict):
+            raise YamlSubsetError("%s: на верхнем уровне ожидалось отображение "
+                                  "(`сервис:` → `host`/`paths`)" % self.where)
+        return value
+
+    def parse_node(self, indent: int):
+        _, text, _ = self.lines[self.pos]
+        if text == "-" or text.startswith("- "):
+            return self.parse_sequence(indent)
+        return self.parse_mapping(indent)
+
+    def parse_mapping(self, indent: int, seed: tuple[str, str, int] | None = None) -> dict:
+        result: dict = {}
+        if seed is not None:
+            key, rest, number = seed
+            result[key] = self.parse_value(rest, indent, number)
+        while self.pos < len(self.lines):
+            line_indent, text, number = self.lines[self.pos]
+            if line_indent != indent or text == "-" or text.startswith("- "):
+                break
+            key, rest = self.split_key(text, number)
+            self.pos += 1
+            if key in result:
+                raise YamlSubsetError("%s:%d: повторяющийся ключ `%s`" % (self.where, number, key))
+            result[key] = self.parse_value(rest, indent, number)
+        return result
+
+    def parse_sequence(self, indent: int) -> list:
+        items: list = []
+        while self.pos < len(self.lines):
+            line_indent, text, number = self.lines[self.pos]
+            if line_indent != indent or not (text == "-" or text.startswith("- ")):
+                break
+            self.pos += 1
+            body = text[1:].strip()
+            if not body:
+                if self.pos < len(self.lines) and self.lines[self.pos][0] > indent:
+                    items.append(self.parse_node(self.lines[self.pos][0]))
+                else:
+                    items.append(None)
+                continue
+            if ":" in body and not body.startswith(("\"", "'")):
+                key, rest = self.split_key(body, number)
+                items.append(self.parse_mapping(indent + len(text) - len(body),
+                                                seed=(key, rest, number)))
+            else:
+                items.append(yaml_scalar(body))
+        return items
+
+    def parse_value(self, rest: str, indent: int, number: int):
+        if rest in {"|", "|-", "|+", ">", ">-", ">+"}:
+            return self.parse_block_scalar(rest, indent)
+        if rest:
+            return yaml_scalar(rest)
+        if self.pos < len(self.lines):
+            next_indent, next_text, _ = self.lines[self.pos]
+            if next_indent > indent:
+                return self.parse_node(next_indent)
+            if next_indent == indent and (next_text == "-" or next_text.startswith("- ")):
+                return self.parse_sequence(indent)
+        return None
+
+    def parse_block_scalar(self, style: str, indent: int) -> str:
+        collected: list[str] = []
+        while self.pos < len(self.lines) and self.lines[self.pos][0] > indent:
+            collected.append(self.lines[self.pos][1])
+            self.pos += 1
+        return collapse(" ".join(collected)) if style.startswith(">") else "\n".join(collected)
+
+    def split_key(self, text: str, number: int) -> tuple[str, str]:
+        if text[0] in "&*!?%":
+            raise YamlSubsetError("%s:%d: конструкция `%s` не поддерживается"
+                                  % (self.where, number, text[0]))
+        if ":" not in text:
+            raise YamlSubsetError("%s:%d: ожидалось `ключ: значение`, получено `%s`"
+                                  % (self.where, number, text))
+        key, _, rest = text.partition(":")
+        key = key.strip().strip("\"'")
+        if not key:
+            raise YamlSubsetError("%s:%d: пустой ключ" % (self.where, number))
+        value = rest.strip()
+        if value.startswith(("[", "{")):
+            raise YamlSubsetError("%s:%d: flow-стиль (`%s`) не поддерживается — пишите блоками"
+                                  % (self.where, number, value))
+        return key, value
+
+
+CONTRACT_KEYS = {"host", "description", "paths"}
+CONTRACT_ENDPOINT_KEYS = {"path", "method", "type", "description", "summary", "headers"}
+
+
+def parse_contract_file(path: Path, rel: str) -> tuple[list[Resource], list[str]]:
+    """Декларативный REST-контракт: `сервис` → `host` + список `paths`.
+
+    Один файл описывает один сервис (или несколько — по блоку на сервис). Для каждого пути
+    доступны `path`, `method`, `type` (что отдаёт/принимает), `description`/`summary` и
+    `headers`; шаблонные сегменты вида `{resource_id}` становятся path-параметрами.
+    """
+    document = YamlSubset(path.read_text(encoding="utf-8"), rel).parse()
+    resources: list[Resource] = []
+    warnings: list[str] = []
+
+    for name, specification in document.items():
+        if not isinstance(specification, dict):
+            warnings.append("%s: `%s` описан не отображением — пропущен" % (rel, name))
+            continue
+        unknown = sorted(set(specification) - CONTRACT_KEYS)
+        if unknown:
+            warnings.append("%s: у `%s` неизвестные ключи: %s" % (rel, name, ", ".join(unknown)))
+        endpoints = specification.get("paths") or []
+        if not isinstance(endpoints, list):
+            warnings.append("%s: у `%s` `paths` должен быть списком — пропущен" % (rel, name))
+            continue
+        resource = Resource(
+            name=str(name), base_path="", line=0, file=rel,
+            host=str(specification.get("host") or ""),
+            description=collapse(str(specification.get("description") or "")),
+        )
+        for index, endpoint in enumerate(endpoints, start=1):
+            if not isinstance(endpoint, dict):
+                warnings.append("%s: `%s` — `paths[%d]` не отображение, пропущен"
+                                % (rel, name, index))
+                continue
+            unknown = sorted(set(endpoint) - CONTRACT_ENDPOINT_KEYS)
+            if unknown:
+                warnings.append("%s: `%s` — `paths[%d]` неизвестные ключи: %s"
+                                % (rel, name, index, ", ".join(unknown)))
+            route = str(endpoint.get("path") or "").strip()
+            if not route:
+                warnings.append("%s: `%s` — `paths[%d]` без `path`, пропущен" % (rel, name, index))
+                continue
+            method = str(endpoint.get("method") or "GET").strip().upper()
+            media = collapse(str(endpoint.get("type") or ""))
+            headers = endpoint.get("headers") or []
+            if isinstance(headers, str):
+                headers = [headers]
+            params = [Param(name=str(header), location="header", type="string", required=True)
+                      for header in headers if str(header).strip()]
+            for placeholder in re.findall(r"\{([^}]+)\}", route):
+                params.append(Param(name=placeholder, location="path", type="string",
+                                    required=True))
+            resource.operations.append(Operation(
+                method=method, path=route, handler="", line=0, file=rel,
+                description=collapse(str(endpoint.get("description")
+                                         or endpoint.get("summary") or "")),
+                params=params,
+                produces=media if method in {"GET", "HEAD", "DELETE", "OPTIONS"} else "",
+                consumes=media if method in {"POST", "PUT", "PATCH"} else "",
+            ))
+        if resource.operations:
+            resources.append(resource)
+        else:
+            warnings.append("%s: у `%s` нет ни одного пригодного `paths`" % (rel, name))
+
+    resources.sort(key=lambda item: item.name)
+    return resources, warnings
+
+
 # ─────────────────────────── артефакты сборки ───────────────────────────
 
 def load_openapi(path: Path) -> tuple[list[Operation], str]:
@@ -1623,14 +1826,14 @@ def build_surface(source: SourceConfig, surface: SurfaceConfig, root: Path) -> S
                 resource.operations = operations
                 result.resources = [resource] if resource.operations else []
                 result.mode = "artifact"
-                result.origin = "OpenAPI из сборки: `%s`" % rel_artifact
+                result.origin = "готовая спецификация OpenAPI из сборки — `%s`" % rel_artifact
                 return result
             if surface.kind == "graphql":
                 sdl = artifact.read_text(encoding="utf-8")
                 result.gql_sdl = sdl
                 result.gql_counts = sdl_summary(sdl)
                 result.mode = "artifact"
-                result.origin = "SDL из сборки: `%s`" % rel_artifact
+                result.origin = "готовая SDL-схема из сборки — `%s`" % rel_artifact
                 return result
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             result.warnings.append("%s: не удалось прочитать `%s` (%s) — падаю на статический разбор"
@@ -1638,8 +1841,8 @@ def build_surface(source: SourceConfig, surface: SurfaceConfig, root: Path) -> S
 
     if adapter is None:
         result.mode = "unsupported"
-        result.origin = ("нет адаптера для пары «%s + %s» — добавьте его в `ADAPTERS` или "
-                         "положите готовую спецификацию в `artifacts`"
+        result.origin = ("для стека «%s + %s» адаптера пока нет: добавьте его в `ADAPTERS` "
+                         "или положите готовую спецификацию в `artifacts`"
                          % (surface.kind, surface.framework or "framework не задан"))
         result.warnings.append("%s/%s: %s" % (source.id, surface.kind, result.origin))
         return result
@@ -1647,7 +1850,7 @@ def build_surface(source: SourceConfig, surface: SurfaceConfig, root: Path) -> S
     files = glob_files(base, surface.include, surface.exclude)
     if not files:
         result.mode = "empty"
-        result.origin = "по шаблонам %s в `%s` ничего не найдено" % (
+        result.origin = "по шаблонам %s в `%s` ничего не нашлось" % (
             ", ".join(code(pattern) for pattern in surface.include) or "—", source.root)
         return result
 
@@ -1659,8 +1862,22 @@ def build_surface(source: SourceConfig, surface: SurfaceConfig, root: Path) -> S
             except (OSError, UnicodeDecodeError) as exc:
                 result.warnings.append("%s: не читается (%s)" % (rel, exc))
         result.mode = "static"
-        result.origin = "статические контракты: %d %s" % (
-            len(files), plural(len(files), "файл", "файла", "файлов"))
+        result.origin = "`.proto` в `%s` — %d %s" % (
+            source.root, len(files), plural(len(files), "файл", "файла", "файлов"))
+        return result
+
+    if adapter == "contract-yaml":
+        for path, rel in zip(files, rel_files):
+            try:
+                resources, contract_warnings = parse_contract_file(path, rel)
+            except (OSError, UnicodeDecodeError, YamlSubsetError) as exc:
+                result.warnings.append("%s: не удалось прочитать контракт (%s)" % (rel, exc))
+                continue
+            result.resources.extend(resources)
+            result.warnings.extend(contract_warnings)
+        result.mode = "contract" if result.resources else "empty"
+        result.origin = "декларативный контракт — %s" % ", ".join(
+            code(name) for name in rel_files)
         return result
 
     sources = read_sources(root, files)
@@ -1674,19 +1891,37 @@ def build_surface(source: SourceConfig, surface: SurfaceConfig, root: Path) -> S
         result.gql_types = types
         result.warnings.extend(warnings)
     result.mode = "static"
-    result.origin = "статический разбор %d %s в `%s`" % (
-        len(files), plural(len(files), "файла", "файлов", "файлов"), source.root)
+    result.origin = "код в `%s` — %d %s" % (
+        source.root, len(files), plural(len(files), "файл", "файла", "файлов"))
     return result
 
 
 # ─────────────────────────── рендеринг страниц ───────────────────────────
+#
+# Страницы читают люди, поэтому сверху — что это и откуда данные, дальше рабочие таблицы,
+# а машинные подробности (id рёбер, ограничения разбора) убраны под `<details>`.
 
 GENERATED_NOTE = (
-    "_Страница собирается автоматически из кода: `make api-docs` "
-    "(в CI — шаг workflow `docs → wiki`). Правки в вики перезапишутся: "
-    "контракт живёт в коде, правила сбора — в [`api-docs.toml`](%s)._"
+    "_Собрано из кода автоматически: `make api-docs` (в CI — шаг workflow `docs → wiki`). "
+    "Править страницу вручную нет смысла — источник правды это код и [`api-docs.toml`](%s)._"
 )
 
+SURFACE_ABOUT = {
+    "rest": ("Что умеет REST-поверхность: ресурсы, операции, параметры, тела запросов и ответы.",
+             "внешние клиенты и интеграции"),
+    "graphql": ("Запросы, мутации и типы, на которые они ссылаются.",
+                "веб-клиент и клиенты с гибкими выборками"),
+    "grpc": ("Сервисы, RPC-методы и сообщения из `.proto`-файлов.",
+             "воркеры и внутренние сервисы"),
+}
+
+STACK_LABEL = {
+    "quarkus": "Quarkus, Kotlin",
+    "microprofile-graphql": "MicroProfile GraphQL",
+    "jakarta-rest": "Jakarta REST",
+    "proto": "protobuf",
+    "api-contracts": "декларативный YAML",
+}
 
 def blob_url(meta: dict, rel: str, line: int = 0, label: str = "") -> str:
     href = "https://github.com/%s/blob/%s/%s" % (meta["repo"], meta["ref"], quote_path(rel))
@@ -1716,188 +1951,182 @@ def table(headers: list[str], rows: list[list[str]]) -> list[str]:
     return lines
 
 
-def surface_intro(surface: Surface) -> list[str]:
-    lines = ["_Источник: %s._" % surface.origin]
+def amounts(count: int, one: str, few: str, many: str) -> str:
+    return "%d %s" % (count, plural(count, one, few, many))
+
+
+def surface_head(surface: Surface, level: str = "##") -> list[str]:
+    """Заголовок источника: что за сервис, откуда данные, о чём предупреждаем."""
+    lines = ["%s %s" % (level, surface.source_title), ""]
     if surface.source_description:
-        lines.append("")
-        lines.append(surface.source_description)
-    lines.append("")
+        lines += [surface.source_description, ""]
+    lines += ["_Откуда данные: %s._" % surface.origin, ""]
     for warning in surface.warnings:
-        lines.append("> ⚠ %s" % warning)
-    if surface.warnings:
-        lines.append("")
+        lines += ["> ⚠ %s" % warning, ""]
     return lines
 
 
+# ── REST ──
+
 def render_rest(surfaces: list[Surface], meta: dict) -> str:
-    lines = page_head(
-        "REST API",
-        "Контракт REST-поверхности: ресурсы, операции, параметры, ответы. Собирается из "
-        "кода (аннотации Jakarta REST) или из OpenAPI-спецификации, если она лежит "
-        "в артефактах сборки.",
-        meta)
+    about, audience = SURFACE_ABOUT["rest"]
+    lines = page_head("REST API", "%s Кому: %s." % (about, audience), meta)
 
-    summary = []
-    for surface in surfaces:
-        summary.append([
-            surface.source_title,
-            MODE_LABEL.get(surface.mode, surface.mode),
-            str(sum(len(r.operations) for r in surface.resources)),
-            str(len(surface.resources)),
-        ])
-    lines += ["## Сводка", ""] + table(
-        ["Источник", "Режим сбора", "Операций", "Ресурсов"], summary)
+    total = sum(surface.contract_count() for surface in surfaces)
+    if surfaces:
+        parts = ["**%s** — %s" % (surface.source_title,
+                                  amounts(surface.contract_count(), "операция", "операции", "операций"))
+                 for surface in surfaces]
+        lines += ["Всего %s: %s." % (amounts(total, "операция", "операции", "операций"),
+                                     ", ".join(parts)), ""]
 
     for surface in surfaces:
-        lines += ["## %s" % surface.source_title, ""]
-        lines += surface_intro(surface)
-        if surface.resources:
+        lines += surface_head(surface)
+        if not surface.resources:
+            lines += ["Операций здесь нет."
+                      + (" Поверхность собирается из декларативного контракта — "
+                         "проверьте `paths` в файле." if surface.mode == "contract" else ""), ""]
+            continue
+        if surface.mode != "artifact":
             lines += ["### Все операции", ""]
-            lines += table(
-                ["Метод", "Путь", "Обработчик", "Описание"],
-                [[code(op.method), code(op.path), code(op.handler), op.description]
-                 for resource in surface.resources for op in resource.operations])
-
+            lines += table(["Метод", "Путь", "Что делает"],
+                           [[code(op.method), code(op.path), op.description]
+                            for resource in surface.resources for op in resource.operations])
         for resource in surface.resources:
-            heading = "### `%s`" % resource.name
-            if resource.base_path:
-                heading += " — %s" % code(resource.base_path)
-            lines += [heading, ""]
-            if resource.description:
-                lines += [resource.description, ""]
-            facts = []
-            if resource.security:
-                facts.append(("Аутентификация", resource.security))
-            if resource.file:
-                facts.append(("Где объявлен", blob_url(
-                    meta, resource.file, resource.line,
-                    "%s:%d" % (resource.file.rsplit("/", 1)[-1], resource.line or 1))))
-            lines += ["- **%s:** %s" % (label, value) for label, value in facts]
-            if facts:
-                lines.append("")
-            for operation in resource.operations:
-                lines += render_operation(operation, meta)
+            lines += render_rest_resource(resource, meta)
 
     if not any(surface.contract_count() for surface in surfaces):
-        lines += ["_REST-операций не найдено. Проверьте `include`/`exclude` в "
-                  "`[[source.surface]]` и наличие `@Path` в коде._", ""]
+        lines += ["_REST-операций не нашлось. Проверьте `include`/`exclude` поверхности в "
+                  "`api-docs.toml` и наличие `@Path` в коде._", ""]
     return "\n".join(lines).rstrip() + "\n"
+
+
+def render_rest_resource(resource: Resource, meta: dict) -> list[str]:
+    heading = ("### Эндпоинты" if not resource.base_path
+               else "### `%s` — %s" % (resource.name, code(resource.base_path)))
+    lines = [heading, ""]
+    if resource.description:
+        lines += [resource.description, ""]
+
+    facts = []
+    if resource.host:
+        facts.append(("Хост", code(resource.host)))
+    if resource.security:
+        facts.append(("Аутентификация", resource.security))
+    lines += ["- **%s:** %s" % (label, value) for label, value in facts]
+    if facts:
+        lines.append("")
+
+    for operation in resource.operations:
+        lines += render_operation(operation, meta)
+    return lines
 
 
 def render_operation(operation: Operation, meta: dict) -> list[str]:
     lines = ["#### `%s %s`" % (operation.method, operation.path), ""]
     if operation.description:
         lines += [operation.description, ""]
-    meta_rows = []
-    if operation.handler and operation.handler != "—":
-        label = operation.handler
-        if operation.file:
-            label = blob_url(meta, operation.file, operation.line, operation.handler)
-        meta_rows.append(["Обработчик", label])
+
+    facts = []
     if operation.consumes:
-        meta_rows.append(["Принимает", code(operation.consumes)])
+        facts.append(("Принимает", code(operation.consumes)))
     if operation.produces:
-        meta_rows.append(["Отдаёт", code(operation.produces)])
-    if operation.returns:
-        meta_rows.append(["Возвращает", code(operation.returns)])
+        facts.append(("Отдаёт", code(operation.produces)))
     if operation.request_body:
-        meta_rows.append(["Тело запроса", code(operation.request_body)])
+        facts.append(("Тело запроса", code(operation.request_body)))
+    if operation.returns:
+        facts.append(("Возвращает", code(operation.returns)))
     if operation.security:
-        meta_rows.append(["Аутентификация", operation.security])
-    responses = "; ".join(
-        "%s — %s" % (code(status), description or "—") for status, description in operation.responses)
-    if responses:
-        meta_rows.append(["Ответы", responses])
-    lines += ["- **%s:** %s" % (key, value) for key, value in meta_rows if value]
-    if meta_rows:
+        facts.append(("Аутентификация", operation.security))
+    if operation.responses:
+        facts.append(("Ответы", "; ".join(
+            "%s — %s" % (code(status), description or "без описания")
+            for status, description in operation.responses)))
+    if operation.handler and operation.handler != "—" and operation.file:
+        facts.append(("Обработчик", blob_url(meta, operation.file, operation.line,
+                                             operation.handler)))
+    lines += ["- **%s:** %s" % (label, value) for label, value in facts]
+    if facts:
         lines.append("")
 
-    params = [p for p in operation.params if p.location != "body"]
+    params = [param for param in operation.params if param.location != "body"]
     if params:
-        lines += table(
-            ["Параметр", "Где", "Тип", "Обязательный", "По умолчанию", "Описание"],
-            [[code(p.name), p.location or "—", code(p.type),
-              "да" if p.required else "нет", code(p.default) if p.default else "—",
-              p.description] for p in params])
+        lines += table(["Параметр", "Где", "Тип", "Обязательный", "По умолчанию", "Описание"],
+                       [[code(param.name), param.location or "—", code(param.type),
+                         "да" if param.required else "нет",
+                         code(param.default) if param.default else "—", param.description]
+                        for param in params])
     return lines
 
 
+# ── GraphQL ──
+
 def render_graphql(surfaces: list[Surface], meta: dict) -> str:
-    lines = page_head(
-        "GraphQL API",
-        "Контракт GraphQL-поверхности: запросы, мутации, их аргументы и типы, достижимые "
-        "из них. Собирается из кода (MicroProfile GraphQL) или из SDL, если она лежит "
-        "в артефактах сборки.",
-        meta)
-
-    summary = []
-    for surface in surfaces:
-        summary.append([
-            surface.source_title,
-            MODE_LABEL.get(surface.mode, surface.mode),
-            str(len(surface.gql_fields)) if surface.mode != "artifact"
-            else str(surface.gql_counts[1] + surface.gql_counts[2]),
-            str(len(surface.gql_types)) if surface.mode != "artifact" else str(surface.gql_counts[0]),
-        ])
-    lines += ["## Сводка", ""] + table(
-        ["Источник", "Режим сбора", "Полей Query/Mutation", "Типов"], summary)
+    about, audience = SURFACE_ABOUT["graphql"]
+    lines = page_head("GraphQL API", "%s Кому: %s." % (about, audience), meta)
 
     for surface in surfaces:
-        lines += ["## %s" % surface.source_title, ""]
-        lines += surface_intro(surface)
+        lines += surface_head(surface)
         if surface.mode == "artifact":
+            lines += ["Схема получена целиком из сборки.", ""]
             if surface.gql_sdl:
-                lines += ["Схема получена из сборки целиком:", "",
-                          "```graphql", surface.gql_sdl.strip(), "```", ""]
+                lines += ["```graphql", surface.gql_sdl.strip(), "```", ""]
             continue
-        for kind, label in (("query", "Запросы (Query)"), ("mutation", "Мутации (Mutation)"),
-                            ("subscription", "Подписки (Subscription)")):
-            chunk = [f for f in surface.gql_fields if f.kind == kind]
+        if not surface.gql_fields:
+            lines += ["Полей `@Query`/`@Mutation` в исходниках нет.", ""]
+            continue
+        for kind, label, hint in (
+            ("query", "Запросы", "Читают данные и ничего не меняют."),
+            ("mutation", "Мутации", "Меняют состояние."),
+            ("subscription", "Подписки", "Отдают поток событий."),
+        ):
+            chunk = [field for field in surface.gql_fields if field.kind == kind]
             if not chunk:
                 continue
-            lines += ["### %s" % label, ""]
-            lines += table(
-                ["Поле", "Аргументы", "Возвращает", "Описание"],
-                [[code(field.name),
-                  ", ".join("%s: %s" % (arg.name, arg.type) +
-                            (" = %s" % arg.default if arg.default else "") for arg in field.args) or "—",
-                  code(field.returns), field.description] for field in chunk])
+            lines += ["### %s" % label, "", "_%s_" % hint, ""]
+            lines += table(["Поле", "Аргументы", "Возвращает", "Описание"],
+                           [[code(field.name), gql_args(field), code(field.returns),
+                             field.description] for field in chunk])
             for field in chunk:
-                lines += render_gql_field(field, surface, meta)
+                lines += render_gql_field(field, meta)
         if surface.gql_types:
-            lines += ["### Типы", ""]
-            lines += table(
-                ["Тип", "Вид", "Полей", "Описание"],
-                [[code(t.name), t.kind, str(len(t.fields) or len(t.values)), t.description]
-                 for t in surface.gql_types])
+            lines += ["### Типы", "",
+                      "_Только те, на которые ссылаются запросы и мутации._", ""]
+            lines += table(["Тип", "Вид", "Содержимое", "Описание"],
+                           [[code(gql_type.name), gql_type.kind,
+                             amounts(len(gql_type.fields) or len(gql_type.values),
+                                     "поле", "поля", "полей"), gql_type.description]
+                            for gql_type in surface.gql_types])
             for gql_type in surface.gql_types:
                 lines += render_gql_type(gql_type)
 
-    if not any(surface.contract_count() for surface in surfaces) and \
-            not any(surface.gql_sdl for surface in surfaces):
-        lines += ["_GraphQL-полей не найдено: в исходниках нет `@Query`/`@Mutation`, "
-                  "а SDL в артефактах сборки отсутствует._", ""]
+    if not any(surface.gql_fields or surface.gql_sdl for surface in surfaces):
+        lines += ["_GraphQL-полей не нашлось: в исходниках нет `@Query`/`@Mutation`, а SDL "
+                  "в артефактах сборки отсутствует._", ""]
     return "\n".join(lines).rstrip() + "\n"
 
 
-def render_gql_field(field: GqlField, surface: Surface, meta: dict) -> list[str]:
-    signature = "%s(%s): %s" % (
-        field.name,
-        ", ".join("%s: %s" % (arg.name, arg.type) + (" = %s" % arg.default if arg.default else "")
-                  for arg in field.args),
-        field.returns)
-    lines = ["#### `%s`" % signature, ""]
+def gql_args(field: GqlField) -> str:
+    if not field.args:
+        return "—"
+    return ", ".join("%s: %s" % (arg.name, arg.type)
+                     + (" = %s" % arg.default if arg.default else "") for arg in field.args)
+
+
+def render_gql_field(field: GqlField, meta: dict) -> list[str]:
+    lines = ["#### `%s(%s): %s`" % (field.name, gql_args(field) if field.args else "",
+                                    field.returns), ""]
     if field.description:
         lines += [field.description, ""]
-    if field.file:
-        lines += ["- **Где объявлен:** %s" % blob_url(
-            meta, field.file, field.line,
-            "%s:%d" % (field.file.rsplit("/", 1)[-1], field.line or 1)), ""]
     if field.args:
-        lines += table(
-            ["Аргумент", "Тип", "По умолчанию", "Описание"],
-            [[code(arg.name), code(arg.type), code(arg.default) if arg.default else "—",
-              arg.description] for arg in field.args])
+        lines += table(["Аргумент", "Тип", "По умолчанию", "Описание"],
+                       [[code(arg.name), code(arg.type),
+                         code(arg.default) if arg.default else "—", arg.description]
+                        for arg in field.args])
+    if field.file:
+        name = field.file.rsplit("/", 1)[-1]
+        label = "%s:%d" % (name, field.line) if field.line else name
+        lines += ["_Объявлено: %s_" % blob_url(meta, field.file, field.line, label), ""]
     return lines
 
 
@@ -1908,15 +2137,17 @@ def render_gql_type(gql_type: GqlType) -> list[str]:
     if gql_type.values:
         lines += ["Значения: " + ", ".join(code(value) for value in gql_type.values), ""]
     if gql_type.fields:
-        lines += table(
-            ["Поле", "Тип", "По умолчанию", "Описание"],
-            [[code(f.name), code(f.type), code(f.default) if f.default else "—", f.description]
-             for f in gql_type.fields])
+        lines += table(["Поле", "Тип", "По умолчанию", "Описание"],
+                       [[code(field.name), code(field.type),
+                         code(field.default) if field.default else "—", field.description]
+                        for field in gql_type.fields])
     return lines
 
 
+# ── gRPC ──
+
 STREAMING_LABEL = {
-    "unary": "unary",
+    "unary": "один запрос → один ответ",
     "server": "server streaming",
     "client": "client streaming",
     "bidi": "bidirectional streaming",
@@ -1924,64 +2155,39 @@ STREAMING_LABEL = {
 
 
 def render_grpc(surfaces: list[Surface], meta: dict) -> str:
-    lines = page_head(
-        "gRPC API",
-        "Контракт gRPC-поверхности: сервисы, RPC-методы, сообщения и перечисления. "
-        "Источник — `.proto`-файлы; реализация сервисов на них не влияет.",
-        meta)
-
-    summary = []
-    for surface in surfaces:
-        summary.append([
-            surface.source_title,
-            MODE_LABEL.get(surface.mode, surface.mode),
-            str(len([s for doc in surface.proto for s in doc.services])),
-            str(surface.contract_count()),
-            str(len([m for doc in surface.proto for m in doc.messages])),
-        ])
-    lines += ["## Сводка", ""] + table(
-        ["Источник", "Режим сбора", "Сервисов", "RPC", "Сообщений"], summary)
+    about, audience = SURFACE_ABOUT["grpc"]
+    lines = page_head("gRPC API", "%s Кому: %s." % (about, audience), meta)
 
     for surface in surfaces:
-        lines += ["## %s" % surface.source_title, ""]
-        lines += surface_intro(surface)
-        if surface.mode == "empty":
-            lines += ["Контрактов нет. Для gRPC положите `.proto` в каталог, который покрыт "
-                      "`include` поверхности `grpc` (по умолчанию `backend/api/src/main/proto/`).", ""]
+        lines += surface_head(surface)
+        if not surface.proto:
+            lines += ["Здесь пока пусто: `.proto` ещё нет. Положите файлы в каталог, покрытый "
+                      "`include` поверхности `grpc` в `api-docs.toml`, и страница соберётся сама.", ""]
             continue
-        for doc in surface.proto:
-            lines += ["### `%s`" % doc.rel, ""]
-            if doc.package:
-                lines.append("- **Пакет:** %s" % code(doc.package))
-            if doc.syntax:
-                lines.append("- **Синтаксис:** %s" % code(doc.syntax))
-            if doc.package or doc.syntax:
+        for document in surface.proto:
+            lines += ["### Файл `%s`" % document.rel, ""]
+            meta_rows = []
+            if document.package:
+                meta_rows.append(("Пакет", code(document.package)))
+            if document.syntax:
+                meta_rows.append(("Синтаксис", code(document.syntax)))
+            lines += ["- **%s:** %s" % (label, value) for label, value in meta_rows]
+            if meta_rows:
                 lines.append("")
-            for service in doc.services:
+            for service in document.services:
                 lines += render_service(service)
-            if doc.messages:
+            if document.messages:
                 lines += ["#### Сообщения", ""]
-                lines += table(
-                    ["Сообщение", "Полей", "Описание"],
-                    [[code(m.name), str(len(m.fields)), m.description] for m in doc.messages])
-                for message in doc.messages:
+                lines += table(["Сообщение", "Полей", "Описание"],
+                               [[code(message.name), str(len(message.fields)), message.description]
+                                for message in document.messages])
+                for message in document.messages:
                     lines += render_message(message)
-            if doc.enums:
+            if document.enums:
                 lines += ["#### Перечисления", ""]
-                lines += table(
-                    ["Перечисление", "Значения", "Описание"],
-                    [[code(e.name), str(len(e.values)), e.description] for e in doc.enums])
-                for enum in doc.enums:
-                    lines += ["##### `%s`" % enum.name, ""]
-                    if enum.description:
-                        lines += [enum.description, ""]
-                    lines += table(
-                        ["Значение", "Номер", "Описание"],
-                        [[code(name), number, description]
-                         for name, number, description in enum.values])
+                for enum in document.enums:
+                    lines += render_enum(enum)
 
-    if not any(surface.proto for surface in surfaces):
-        lines += ["_`.proto`-файлов не найдено: gRPC-контрактов в системе пока нет._", ""]
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -1990,11 +2196,11 @@ def render_service(service: ProtoService) -> list[str]:
     if service.description:
         lines += [service.description, ""]
     if not service.rpcs:
-        return lines + ["_RPC не объявлены._", ""]
-    lines += table(
-        ["RPC", "Тип", "Запрос", "Ответ", "Описание"],
-        [[code(rpc.name), STREAMING_LABEL.get(rpc.streaming, rpc.streaming),
-          code(rpc.request), code(rpc.response), rpc.description] for rpc in service.rpcs])
+        return lines + ["_Методов не объявлено._", ""]
+    lines += table(["Метод", "Тип вызова", "Запрос", "Ответ", "Описание"],
+                   [[code(rpc.name), STREAMING_LABEL.get(rpc.streaming, rpc.streaming),
+                     code(rpc.request), code(rpc.response), rpc.description]
+                    for rpc in service.rpcs])
     return lines
 
 
@@ -2004,75 +2210,88 @@ def render_message(message: ProtoMessage) -> list[str]:
         lines += [message.description, ""]
     if not message.fields:
         return lines + ["_Полей нет._", ""]
-    lines += table(
-        ["#", "Поле", "Тип", "Кардинальность", "Описание"],
-        [[field.number, code(field.name), code(field.type), field.cardinality or "—",
-          field.description] for field in message.fields])
+    lines += table(["#", "Поле", "Тип", "Модификатор", "Описание"],
+                   [[field.number, code(field.name), code(field.type),
+                     field.cardinality or "—", field.description] for field in message.fields])
     return lines
 
+
+def render_enum(enum: ProtoEnum) -> list[str]:
+    lines = ["##### `%s`" % enum.name, ""]
+    if enum.description:
+        lines += [enum.description, ""]
+    lines += table(["Значение", "Номер", "Описание"],
+                   [[code(name), number, description] for name, number, description in enum.values])
+    return lines
+
+
+# ── оглавление раздела ──
 
 def render_index(surfaces: dict[str, list[Surface]], config, meta: dict) -> str:
     lines = page_head(
         "API: контракты",
-        "Контракты системы, собранные из кода: REST, GraphQL и gRPC. Это не ручная "
-        "документация, а снимок того, что код реально объявляет, — в духе Swagger, но "
-        "для трёх поверхностей сразу и без запуска приложения.",
+        "Что система обещает клиентам: REST, GraphQL и gRPC. Это снимок кода, а не пожелания — "
+        "поэтому страницы не расходятся с реализацией.",
         meta)
 
     rows = []
     for kind in SURFACE_KINDS:
+        about, audience = SURFACE_ABOUT[kind]
         chunk = surfaces.get(kind, [])
-        if not chunk:
-            rows.append([SURFACE_TITLE[kind], "—", "0", "не описана в конфиге",
-                         "[%s](%s)" % (SURFACE_TITLE[kind], SURFACE_PAGE[kind])])
-            continue
         count = sum(surface.contract_count() for surface in chunk)
-        modes = ", ".join(sorted({MODE_LABEL.get(surface.mode, surface.mode) for surface in chunk}))
-        sources = ", ".join(surface.source_title for surface in chunk)
-        rows.append([SURFACE_TITLE[kind], sources, str(count), modes,
-                     "[%s](%s)" % (SURFACE_TITLE[kind], SURFACE_PAGE[kind])])
+        if kind == "grpc":
+            amount = amounts(count, "метод", "метода", "методов")
+        elif kind == "graphql":
+            amount = amounts(count, "поле", "поля", "полей")
+        else:
+            amount = amounts(count, "операция", "операции", "операций")
+        rows.append([SURFACE_TITLE[kind], audience, amount if count else "пока пусто",
+                     "[открыть](%s)" % SURFACE_PAGE[kind]])
     lines += ["## Поверхности", ""] + table(
-        ["Поверхность", "Источники", "Контрактов", "Режим сбора", "Страница"], rows)
+        ["Поверхность", "Для кого", "Сколько контрактов", "Страница"], rows)
 
     source_rows = []
     for source in config.sources:
-        kinds = ", ".join(sorted({surface.kind for surface in source.surfaces})) or "—"
-        source_rows.append([
-            code(source.id), code(source.root), source.framework or "—", kinds,
-            "включён" if source.enabled else "выключен",
-        ])
+        kinds = ", ".join(SURFACE_TITLE[kind] for kind in SURFACE_KINDS
+                          if any(surface.kind == kind for surface in source.surfaces))
+        stack = STACK_LABEL.get(source.framework, source.framework or "—")
+        source_rows.append([source.title, code(source.root), stack, kinds or "—",
+                            "включён" if source.enabled else "выключен"])
     lines += ["## Источники", ""] + table(
-        ["id", "Корень", "Framework", "Поверхности", "Статус"], source_rows)
+        ["Источник", "Где живёт", "Стек", "Поверхности", "Статус"], source_rows)
 
     lines += [
-        "## Как пересобрать", "",
+        "## Как обновить", "",
         "```bash",
-        "make api-docs         # пересобрать documentation/api/",
+        "make api-docs         # пересобрать страницы контрактов",
         "make api-docs-check   # проверить, что страницы соответствуют коду",
         "```",
         "",
         "В CI отдельная команда не нужна: workflow `docs → wiki` собирает контракты перед "
-        "публикацией вики, поэтому страница всегда соответствует коммиту.",
+        "публикацией, поэтому вики всегда отражает текущий коммит.",
         "",
         "## Как расширять", "",
-        "- Новый источник (контейнер, сервис, монорепо-модуль) — блок `[[source]]` в "
-        "`api-docs.toml` с `root` и `framework`.",
+        "- Новый сервис или контейнер — блок `[[source]]` в `api-docs.toml` (`root`, `framework`).",
         "- Новая поверхность у существующего источника — блок `[[source.surface]]` с `kind` "
         "(`rest`, `graphql`, `grpc`) и шаблонами `include`/`exclude`.",
-        "- Готовая спецификация из сборки важнее статического разбора: положите OpenAPI в JSON "
-        "(REST) или SDL (GraphQL) в путь из `artifacts` — она подхватится автоматически.",
-        "- Для стека без готового адаптера сборка не падает: страница поверхности выйдет с "
-        "пометкой «нет адаптера», остальные соберутся как обычно.",
+        "- Если у сервиса есть готовая спецификация (OpenAPI в JSON или SDL), укажите её в "
+        "`artifacts` — она важнее разбора кода.",
+        "- Если кода или аннотаций ещё нет, опишите контракт декларативно: "
+        "`framework = \"api-contracts\"` и YAML рядом с сервисом (`host`, `paths`).",
         "",
-        "## Ограничения", "",
-        "- Статический разбор читает аннотации и KDoc, но не выполняет код: динамически "
-        "построенные пути, наследование аннотаций и вычисляемые схемы он не увидит.",
-        "- Типы параметров приводятся как написаны в коде (Kotlin/Java), без нормализации "
-        "в JSON Schema.",
-        "- YAML-спецификации не читаются (нет YAML-парсера в стандартной библиотеке): "
-        "REST-артефакт должен быть в JSON.",
-        "- Страницы не коммитятся в репозиторий: единственный источник правды — код и "
-        "`api-docs.toml`, а вики пересобирается на каждом запуске.",
+        "<details>",
+        "<summary>Ограничения разбора</summary>",
+        "",
+        "- Статический разбор читает аннотации и KDoc, но не выполняет код: динамически построенные "
+        "пути, унаследованные аннотации и вычисляемые схемы он не увидит.",
+        "- Типы приводятся так, как написаны в коде, без нормализации в JSON Schema.",
+        "- YAML-спецификации из сборки не читаются (в стандартной библиотеке Python нет YAML-парсера): "
+        "REST-артефакт должен быть в JSON. Декларативный YAML-контракт читается подмножеством "
+        "парсера — отображения, списки, скаляры и блочные строки; якоря, теги и flow-стиль дают "
+        "ошибку с номером строки.",
+        "- Страницы не коммитятся в репозиторий: источник правды — код и `api-docs.toml`.",
+        "",
+        "</details>",
         "",
     ]
     if meta.get("sha"):
