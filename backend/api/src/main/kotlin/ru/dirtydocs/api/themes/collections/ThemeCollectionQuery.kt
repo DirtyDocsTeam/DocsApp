@@ -6,7 +6,10 @@ import org.eclipse.microprofile.graphql.Description
 import org.eclipse.microprofile.graphql.GraphQLApi
 import org.eclipse.microprofile.graphql.Query
 import org.jooq.DSLContext
+import org.jooq.SortField
+import ru.dirtydocs.api.themes.ThemeProjections
 import ru.dirtydocs.api.themes.ThemeProjections.THEME_COLLECTION
+import ru.novari.spectra.generated.jooq.tables.references.THEME_COLLECTIONS
 import ru.novari.data.ProjectionContext
 
 @GraphQLApi
@@ -19,16 +22,17 @@ class ThemeCollectionQuery(
     fun listPersonalThemes(env: DataFetchingEnvironment, limit: Int = 10, offset: Int = 0): List<ThemeCollection> {
         val context = contexts.get()
         val projection = THEME_COLLECTION.select(env, context)
-        // TODO: Implement "WHERE" filtration integration in projection API
-        return projection.fetchPage(dsl, orderBy = listOf(), limit = limit, offset = offset)
+            .where(ThemeProjections.personalThemeCollections(context))
+        return projection.fetchPage(dsl, orderBy = collectionOrder, limit = limit, offset = offset)
     }
     @Query
     @Description("Search personal theme collections")
     fun searchPersonalThemes(env: DataFetchingEnvironment, query: String, limit: Int = 10, offset: Int = 0): List<ThemeCollection> {
         val context = contexts.get()
         val projection = THEME_COLLECTION.select(env, context)
-        // TODO: Implement "WHERE" filtration integration in projection API
-        return projection.fetchPage(dsl, orderBy = listOf(), limit = limit, offset = offset)
+            .where(ThemeProjections.personalThemeCollections(context))
+            .where(ThemeProjections.collectionNameMatches(query))
+        return projection.fetchPage(dsl, orderBy = collectionOrder, limit = limit, offset = offset)
     }
 
     @Query
@@ -36,15 +40,15 @@ class ThemeCollectionQuery(
     fun listThemes(env: DataFetchingEnvironment, limit: Int = 10, offset: Int = 0): List<ThemeCollection> {
         val context = contexts.get()
         val projection = THEME_COLLECTION.select(env, context)
-        return projection.fetchPage(dsl, orderBy = listOf(), limit = limit, offset = offset)
+        return projection.fetchPage(dsl, orderBy = collectionOrder, limit = limit, offset = offset)
     }
     @Query
     @Description("Search theme collections")
     fun searchThemes(env: DataFetchingEnvironment, query: String, limit: Int = 10, offset: Int = 0): List<ThemeCollection> {
         val context = contexts.get()
         val projection = THEME_COLLECTION.select(env, context)
-        // TODO: Implement search integration in projection API
-        return projection.fetchPage(dsl, orderBy = listOf(), limit = limit, offset = offset)
+            .where(ThemeProjections.collectionNameMatches(query))
+        return projection.fetchPage(dsl, orderBy = collectionOrder, limit = limit, offset = offset)
     }
 
     @Query
@@ -60,5 +64,12 @@ class ThemeCollectionQuery(
         val context = contexts.get()
         val projection = THEME_COLLECTION.select(env, context)
         return projection.fetchByIds(dsl, ids)
+    }
+
+    private companion object {
+        val collectionOrder: List<SortField<*>> = listOf(
+            THEME_COLLECTIONS.UPDATED_AT.desc(),
+            THEME_COLLECTIONS.ID.desc(),
+        )
     }
 }

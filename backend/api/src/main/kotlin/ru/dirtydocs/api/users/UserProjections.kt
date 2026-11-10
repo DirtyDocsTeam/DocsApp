@@ -53,8 +53,7 @@ object UserProjections {
         ) + mapOf(
             "apiTokens" to ManyRelation(
                 childProvider = { TOKEN },
-                childForeignKey = { API_TOKENS.USER_ID },
-                parentKey = USERS.ID,
+                relationCondition = { API_TOKENS.USER_ID.eq(USERS.ID) },
                 orderBy = {
                     listOf(API_TOKENS.CREATED_AT.desc(), API_TOKENS.ID.desc())
                 },

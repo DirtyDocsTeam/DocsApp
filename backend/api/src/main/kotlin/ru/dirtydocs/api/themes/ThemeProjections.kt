@@ -1,6 +1,7 @@
 package ru.dirtydocs.api.themes
 
 import kotlinx.serialization.json.Json
+import org.jooq.Condition
 import org.jooq.impl.DSL
 import ru.dirtydocs.api.themes.collections.ThemeCollection
 import ru.dirtydocs.api.themes.collections.ThemeCollectionParameters
@@ -8,6 +9,7 @@ import ru.dirtydocs.api.themes.styles.Style
 import ru.dirtydocs.api.themes.styles.StyleDescription
 import ru.novari.data.ManyRelation
 import ru.novari.data.Projection
+import ru.novari.data.ProjectionContext
 import ru.novari.data.columnNodes
 import ru.novari.data.jsonb
 import ru.novari.spectra.generated.jooq.tables.references.STYLES
@@ -34,10 +36,7 @@ object ThemeProjections {
         ),
         required = setOf("id"),
         factory = ::Style,
-        access = { context ->
-            // TODO: Style by theme access rules if needed
-            DSL.trueCondition()
-        }
+        access = ::styleAccess,
     )
     val THEME: Projection<Theme> = Projection(
         table = THEMES,
@@ -54,8 +53,7 @@ object ThemeProjections {
         ) + mapOf(
             "styles" to ManyRelation(
                 childProvider = { STYLE },
-                childForeignKey = { STYLES.THEME_ID },
-                parentKey = STYLES.ID,
+                relationCondition = { STYLES.THEME_ID.eq(THEMES.ID) },
                 orderBy = { listOf(STYLES.ID.desc()) },
                 defaultLimit = 10,
                 maxLimit = 100
@@ -63,12 +61,7 @@ object ThemeProjections {
         ),
         required = setOf("id"),
         factory = ::Theme,
-        access = { context ->
-            THEMES.IS_PUBLIC.eq(true).or(
-                // TODO: Theme collection access rules
-                DSL.trueCondition()
-            )
-        }
+        access = ::themeAccess,
     )
     val THEME_COLLECTION: Projection<ThemeCollection> = Projection(
         table = THEME_COLLECTIONS,
@@ -85,8 +78,13 @@ object ThemeProjections {
         ) + mapOf(
             "themes" to ManyRelation(
                 childProvider = { THEME },
-                childForeignKey = { THEME_COLLECTION_THEMES.THEME_COLLECTION_ID },
-                parentKey = THEME_COLLECTIONS.ID,
+                relationCondition = {
+                    THEMES.ID.`in`(
+                        DSL.select(THEME_COLLECTION_THEMES.THEME_ID)
+                            .from(THEME_COLLECTION_THEMES)
+                            .where(THEME_COLLECTION_THEMES.THEME_COLLECTION_ID.eq(THEME_COLLECTIONS.ID))
+                    )
+                },
                 orderBy = { listOf(THEMES.ID.desc()) },
                 defaultLimit = 10,
                 maxLimit = 100
@@ -94,16 +92,49 @@ object ThemeProjections {
         ),
         required = setOf("id"),
         factory = ::ThemeCollection,
-        access = { context ->
-            THEME_COLLECTIONS.IS_PUBLIC.eq(true).or(
-                context.viewerId?.let { viewerId ->
-                    THEME_COLLECTIONS.ID.`in`(
-                        DSL.select(USER_THEME_COLLECTIONS.THEME_COLLECTION_ID)
-                            .from(USER_THEME_COLLECTIONS)
-                            .where(USER_THEME_COLLECTIONS.USER_ID.eq(viewerId))
-                    )
-                } ?: DSL.falseCondition()
-            )
-        }
+        access = ::themeCollectionAccess,
     )
+
+    /** Restricts themes to collections assigned to the trusted viewer; anonymous viewers match none. */
+    internal fun personalThemes(context: ProjectionContext): Condition =
+        context.viewerId?.let { viewerId ->
+            THEMES.ID.`in`(
+                DSL.select(THEME_COLLECTION_THEMES.THEME_ID)
+                    .from(THEME_COLLECTION_THEMES)
+                    .join(USER_THEME_COLLECTIONS)
+                    .on(THEME_COLLECTION_THEMES.THEME_COLLECTION_ID.eq(USER_THEME_COLLECTIONS.THEME_COLLECTION_ID))
+                    .where(USER_THEME_COLLECTIONS.USER_ID.eq(viewerId))
+            )
+        } ?: DSL.falseCondition()
+
+    /** Restricts collections to those assigned to the trusted viewer; anonymous viewers match none. */
+    internal fun personalThemeCollections(context: ProjectionContext): Condition =
+        context.viewerId?.let { viewerId ->
+            THEME_COLLECTIONS.ID.`in`(
+                DSL.select(USER_THEME_COLLECTIONS.THEME_COLLECTION_ID)
+                    .from(USER_THEME_COLLECTIONS)
+                    .where(USER_THEME_COLLECTIONS.USER_ID.eq(viewerId))
+            )
+        } ?: DSL.falseCondition()
+
+    internal fun nameMatches(query: String): Condition =
+        query.takeIf(String::isNotBlank)?.let(THEMES.NAME::containsIgnoreCase)
+            ?: DSL.trueCondition()
+
+    internal fun collectionNameMatches(query: String): Condition =
+        query.takeIf(String::isNotBlank)?.let(THEME_COLLECTIONS.NAME::containsIgnoreCase)
+            ?: DSL.trueCondition()
+
+    private fun themeAccess(context: ProjectionContext): Condition =
+        THEMES.IS_PUBLIC.eq(true).or(personalThemes(context))
+
+    private fun styleAccess(context: ProjectionContext): Condition =
+        STYLES.THEME_ID.`in`(
+            DSL.select(THEMES.ID)
+                .from(THEMES)
+                .where(themeAccess(context))
+        )
+
+    private fun themeCollectionAccess(context: ProjectionContext): Condition =
+        THEME_COLLECTIONS.IS_PUBLIC.eq(true).or(personalThemeCollections(context))
 }
