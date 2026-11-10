@@ -53,6 +53,7 @@ INDEX_PAGE = "index.md"
 
 MODE_LABEL = {
     "artifact": "артефакт сборки",
+    "contract": "декларативный контракт",
     "static": "статический разбор",
     "empty": "контрактов нет",
     "unsupported": "нет адаптера",
@@ -68,6 +69,8 @@ ADAPTERS = {
     ("graphql", "quarkus"): "jvm-graphql",
     ("graphql", "microprofile-graphql"): "jvm-graphql",
     ("graphql", "microprofile"): "jvm-graphql",
+    ("rest", "api-contracts"): "contract-yaml",
+    ("rest", "contract-yaml"): "contract-yaml",
     ("grpc", "proto"): "proto",
     ("grpc", "quarkus"): "proto",
     ("grpc", "any"): "proto",
@@ -738,6 +741,7 @@ class Resource:
     base_path: str
     line: int
     file: str = ""
+    host: str = ""
     description: str = ""
     security: str = ""
     operations: list[Operation] = field(default_factory=list)
@@ -1355,6 +1359,214 @@ def parse_proto(path: Path, rel: str, text: str) -> ProtoDoc:
     return ProtoParser(tokenize_proto(text), rel).parse()
 
 
+# ─────────────────── декларативные контракты (YAML) ───────────────────
+#
+# Для сервисов, чей контракт ещё не выражен кодом (или выражен не аннотациями), допускается
+# декларативный файл рядом с сервисом — как `backend/s3-gateway/api-contracts.yaml`.
+# Поддерживается подмножество YAML: отображения, списки, скаляры и блочные строки (`|`, `>`).
+# Всё остальное (flow-стиль `{}`/`[]`, якоря, теги, несколько документов) — ошибка с номером
+# строки: тихо неверный контракт хуже громкой ошибки, а полноценный YAML-парсер в стандартную
+# библиотеку Python не входит.
+
+
+class YamlSubsetError(ValueError):
+    """Синтаксис вне поддерживаемого подмножества YAML."""
+
+
+def yaml_scalar(raw: str):
+    value = raw.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+        return value[1:-1]
+    if value in {"null", "~", ""}:
+        return None
+    return value
+
+
+class YamlSubset:
+    """Минимальный YAML-читатель под декларативные контракты."""
+
+    def __init__(self, text: str, where: str = ""):
+        self.where = where or "yaml"
+        self.lines: list[tuple[int, str, int]] = []
+        for number, raw in enumerate(text.splitlines(), start=1):
+            if "\t" in raw[:len(raw) - len(raw.lstrip(" \t"))]:
+                raise YamlSubsetError("%s:%d: табуляция в отступе не поддерживается"
+                                      % (self.where, number))
+            stripped = raw.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if stripped.startswith("---"):
+                raise YamlSubsetError("%s:%d: несколько документов в одном файле не поддерживаются"
+                                      % (self.where, number))
+            indent = len(raw) - len(raw.lstrip(" "))
+            self.lines.append((indent, stripped, number))
+        self.pos = 0
+
+    def parse(self) -> dict:
+        if not self.lines:
+            return {}
+        value = self.parse_node(self.lines[0][0])
+        if self.pos < len(self.lines):
+            _, text, number = self.lines[self.pos]
+            raise YamlSubsetError("%s:%d: неожиданная строка `%s`" % (self.where, number, text))
+        if not isinstance(value, dict):
+            raise YamlSubsetError("%s: на верхнем уровне ожидалось отображение "
+                                  "(`сервис:` → `host`/`paths`)" % self.where)
+        return value
+
+    def parse_node(self, indent: int):
+        _, text, _ = self.lines[self.pos]
+        if text == "-" or text.startswith("- "):
+            return self.parse_sequence(indent)
+        return self.parse_mapping(indent)
+
+    def parse_mapping(self, indent: int, seed: tuple[str, str, int] | None = None) -> dict:
+        result: dict = {}
+        if seed is not None:
+            key, rest, number = seed
+            result[key] = self.parse_value(rest, indent, number)
+        while self.pos < len(self.lines):
+            line_indent, text, number = self.lines[self.pos]
+            if line_indent != indent or text == "-" or text.startswith("- "):
+                break
+            key, rest = self.split_key(text, number)
+            self.pos += 1
+            if key in result:
+                raise YamlSubsetError("%s:%d: повторяющийся ключ `%s`" % (self.where, number, key))
+            result[key] = self.parse_value(rest, indent, number)
+        return result
+
+    def parse_sequence(self, indent: int) -> list:
+        items: list = []
+        while self.pos < len(self.lines):
+            line_indent, text, number = self.lines[self.pos]
+            if line_indent != indent or not (text == "-" or text.startswith("- ")):
+                break
+            self.pos += 1
+            body = text[1:].strip()
+            if not body:
+                if self.pos < len(self.lines) and self.lines[self.pos][0] > indent:
+                    items.append(self.parse_node(self.lines[self.pos][0]))
+                else:
+                    items.append(None)
+                continue
+            if ":" in body and not body.startswith(("\"", "'")):
+                key, rest = self.split_key(body, number)
+                items.append(self.parse_mapping(indent + len(text) - len(body),
+                                                seed=(key, rest, number)))
+            else:
+                items.append(yaml_scalar(body))
+        return items
+
+    def parse_value(self, rest: str, indent: int, number: int):
+        if rest in {"|", "|-", "|+", ">", ">-", ">+"}:
+            return self.parse_block_scalar(rest, indent)
+        if rest:
+            return yaml_scalar(rest)
+        if self.pos < len(self.lines):
+            next_indent, next_text, _ = self.lines[self.pos]
+            if next_indent > indent:
+                return self.parse_node(next_indent)
+            if next_indent == indent and (next_text == "-" or next_text.startswith("- ")):
+                return self.parse_sequence(indent)
+        return None
+
+    def parse_block_scalar(self, style: str, indent: int) -> str:
+        collected: list[str] = []
+        while self.pos < len(self.lines) and self.lines[self.pos][0] > indent:
+            collected.append(self.lines[self.pos][1])
+            self.pos += 1
+        return collapse(" ".join(collected)) if style.startswith(">") else "\n".join(collected)
+
+    def split_key(self, text: str, number: int) -> tuple[str, str]:
+        if text[0] in "&*!?%":
+            raise YamlSubsetError("%s:%d: конструкция `%s` не поддерживается"
+                                  % (self.where, number, text[0]))
+        if ":" not in text:
+            raise YamlSubsetError("%s:%d: ожидалось `ключ: значение`, получено `%s`"
+                                  % (self.where, number, text))
+        key, _, rest = text.partition(":")
+        key = key.strip().strip("\"'")
+        if not key:
+            raise YamlSubsetError("%s:%d: пустой ключ" % (self.where, number))
+        value = rest.strip()
+        if value.startswith(("[", "{")):
+            raise YamlSubsetError("%s:%d: flow-стиль (`%s`) не поддерживается — пишите блоками"
+                                  % (self.where, number, value))
+        return key, value
+
+
+CONTRACT_KEYS = {"host", "description", "paths"}
+CONTRACT_ENDPOINT_KEYS = {"path", "method", "type", "description", "summary", "headers"}
+
+
+def parse_contract_file(path: Path, rel: str) -> tuple[list[Resource], list[str]]:
+    """Декларативный REST-контракт: `сервис` → `host` + список `paths`.
+
+    Один файл описывает один сервис (или несколько — по блоку на сервис). Для каждого пути
+    доступны `path`, `method`, `type` (что отдаёт/принимает), `description`/`summary` и
+    `headers`; шаблонные сегменты вида `{resource_id}` становятся path-параметрами.
+    """
+    document = YamlSubset(path.read_text(encoding="utf-8"), rel).parse()
+    resources: list[Resource] = []
+    warnings: list[str] = []
+
+    for name, specification in document.items():
+        if not isinstance(specification, dict):
+            warnings.append("%s: `%s` описан не отображением — пропущен" % (rel, name))
+            continue
+        unknown = sorted(set(specification) - CONTRACT_KEYS)
+        if unknown:
+            warnings.append("%s: у `%s` неизвестные ключи: %s" % (rel, name, ", ".join(unknown)))
+        endpoints = specification.get("paths") or []
+        if not isinstance(endpoints, list):
+            warnings.append("%s: у `%s` `paths` должен быть списком — пропущен" % (rel, name))
+            continue
+        resource = Resource(
+            name=str(name), base_path="", line=0, file=rel,
+            host=str(specification.get("host") or ""),
+            description=collapse(str(specification.get("description") or "")),
+        )
+        for index, endpoint in enumerate(endpoints, start=1):
+            if not isinstance(endpoint, dict):
+                warnings.append("%s: `%s` — `paths[%d]` не отображение, пропущен"
+                                % (rel, name, index))
+                continue
+            unknown = sorted(set(endpoint) - CONTRACT_ENDPOINT_KEYS)
+            if unknown:
+                warnings.append("%s: `%s` — `paths[%d]` неизвестные ключи: %s"
+                                % (rel, name, index, ", ".join(unknown)))
+            route = str(endpoint.get("path") or "").strip()
+            if not route:
+                warnings.append("%s: `%s` — `paths[%d]` без `path`, пропущен" % (rel, name, index))
+                continue
+            method = str(endpoint.get("method") or "GET").strip().upper()
+            media = collapse(str(endpoint.get("type") or ""))
+            headers = endpoint.get("headers") or []
+            if isinstance(headers, str):
+                headers = [headers]
+            params = [Param(name=str(header), location="header", type="string", required=True)
+                      for header in headers if str(header).strip()]
+            for placeholder in re.findall(r"\{([^}]+)\}", route):
+                params.append(Param(name=placeholder, location="path", type="string",
+                                    required=True))
+            resource.operations.append(Operation(
+                method=method, path=route, handler="", line=0, file=rel,
+                description=collapse(str(endpoint.get("description")
+                                         or endpoint.get("summary") or "")),
+                params=params,
+                produces=media if method in {"GET", "HEAD", "DELETE", "OPTIONS"} else "",
+                consumes=media if method in {"POST", "PUT", "PATCH"} else "",
+            ))
+        if resource.operations:
+            resources.append(resource)
+        else:
+            warnings.append("%s: у `%s` нет ни одного пригодного `paths`" % (rel, name))
+
+    resources.sort(key=lambda item: item.name)
+    return resources, warnings
+
+
 # ─────────────────────────── артефакты сборки ───────────────────────────
 
 def load_openapi(path: Path) -> tuple[list[Operation], str]:
@@ -1663,6 +1875,19 @@ def build_surface(source: SourceConfig, surface: SurfaceConfig, root: Path) -> S
             len(files), plural(len(files), "файл", "файла", "файлов"))
         return result
 
+    if adapter == "contract-yaml":
+        for path, rel in zip(files, rel_files):
+            try:
+                resources, contract_warnings = parse_contract_file(path, rel)
+            except (OSError, UnicodeDecodeError, YamlSubsetError) as exc:
+                result.warnings.append("%s: не удалось прочитать контракт (%s)" % (rel, exc))
+                continue
+            result.resources.extend(resources)
+            result.warnings.extend(contract_warnings)
+        result.mode = "contract" if result.resources else "empty"
+        result.origin = "декларативный контракт: %s" % ", ".join(code(name) for name in rel_files)
+        return result
+
     sources = read_sources(root, files)
     if surface.kind == "rest":
         resources, warnings = collect_rest(sources)
@@ -1766,12 +1991,15 @@ def render_rest(surfaces: list[Surface], meta: dict) -> str:
             if resource.description:
                 lines += [resource.description, ""]
             facts = []
+            if resource.host:
+                facts.append(("Хост", code(resource.host)))
             if resource.security:
                 facts.append(("Аутентификация", resource.security))
             if resource.file:
+                name = resource.file.rsplit("/", 1)[-1]
                 facts.append(("Где объявлен", blob_url(
                     meta, resource.file, resource.line,
-                    "%s:%d" % (resource.file.rsplit("/", 1)[-1], resource.line or 1))))
+                    "%s:%d" % (name, resource.line) if resource.line else name)))
             lines += ["- **%s:** %s" % (label, value) for label, value in facts]
             if facts:
                 lines.append("")
@@ -1946,8 +2174,8 @@ def render_grpc(surfaces: list[Surface], meta: dict) -> str:
         lines += ["## %s" % surface.source_title, ""]
         lines += surface_intro(surface)
         if surface.mode == "empty":
-            lines += ["Контрактов нет. Для gRPC положите `.proto` в каталог, который покрыт "
-                      "`include` поверхности `grpc` (по умолчанию `backend/api/src/main/proto/`).", ""]
+            lines += ["Контрактов нет. Для gRPC положите `.proto` в каталог, покрытый `include` "
+                      "поверхности `grpc` этого источника (см. `api-docs.toml`).", ""]
             continue
         for doc in surface.proto:
             lines += ["### `%s`" % doc.rel, ""]
@@ -1980,8 +2208,6 @@ def render_grpc(surfaces: list[Surface], meta: dict) -> str:
                         [[code(name), number, description]
                          for name, number, description in enum.values])
 
-    if not any(surface.proto for surface in surfaces):
-        lines += ["_`.proto`-файлов не найдено: gRPC-контрактов в системе пока нет._", ""]
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -2061,6 +2287,9 @@ def render_index(surfaces: dict[str, list[Surface]], config, meta: dict) -> str:
         "(`rest`, `graphql`, `grpc`) и шаблонами `include`/`exclude`.",
         "- Готовая спецификация из сборки важнее статического разбора: положите OpenAPI в JSON "
         "(REST) или SDL (GraphQL) в путь из `artifacts` — она подхватится автоматически.",
+        "- Сервис без кода или без аннотаций описывается декларативно: `framework = \"api-contracts\"` "
+        "и YAML рядом с сервисом (`host`, `paths` → `path`/`method`/`type`/`headers`), как в "
+        "`backend/s3-gateway/api-contracts.yaml`.",
         "- Для стека без готового адаптера сборка не падает: страница поверхности выйдет с "
         "пометкой «нет адаптера», остальные соберутся как обычно.",
         "",
@@ -2069,8 +2298,10 @@ def render_index(surfaces: dict[str, list[Surface]], config, meta: dict) -> str:
         "построенные пути, наследование аннотаций и вычисляемые схемы он не увидит.",
         "- Типы параметров приводятся как написаны в коде (Kotlin/Java), без нормализации "
         "в JSON Schema.",
-        "- YAML-спецификации не читаются (нет YAML-парсера в стандартной библиотеке): "
-        "REST-артефакт должен быть в JSON.",
+        "- YAML-спецификации из сборки не читаются (нет YAML-парсера в стандартной библиотеке): "
+        "REST-артефакт должен быть в JSON. Декларативный YAML-контракт читается подмножеством "
+        "парсера — отображения, списки, скаляры и блочные строки; flow-стиль, якоря и теги "
+        "дают ошибку с номером строки.",
         "- Страницы не коммитятся в репозиторий: единственный источник правды — код и "
         "`api-docs.toml`, а вики пересобирается на каждом запуске.",
         "",

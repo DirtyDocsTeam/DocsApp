@@ -1,0 +1,22 @@
+s3-gateway:
+  host: storage.dirtydocs.rellomine.top
+  paths:
+  - path: /static/{path}
+    type: html/js/css
+    method: GET
+    description: |
+      Отдает статику для web клиента.
+  - path: /object/{resource_id}
+    type: S3
+    method: GET
+    headers:
+    - S3-Token
+    description: |
+      Загрузка обьектов из S3 по внешнему id ресурса + токену.
+  - path: /object/{resource_id}
+    type: S3
+    method: PUT
+    headers:
+    - S3-Token
+    description: |
+      Загрузка обьектов в S3 по внешнему id ресурса + токену.
