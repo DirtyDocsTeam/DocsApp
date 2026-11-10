@@ -1,64 +1,75 @@
 #!/usr/bin/env python3
-"""Единый DDL и ERD из Liquibase-чанжлога.
+"""Схема БД из Liquibase-чанжлога: единый DDL и ERD на Mermaid.
 
-Источник правды по схеме — Liquibase-чанжлог в
-`backend/api/src/main/resources/db/changelog/`. Скрипт разворачивает master-файл
-(`include`/`includeAll`/инлайновые `changeSet`) в один DDL `documentation/design/db.sql`,
-а по команде перерисовывает ERD в `documentation/design/schema.png`.
+Источник правды по схеме — чанжлог в `backend/api/src/main/resources/db/changelog/`.
+Скрипт разворачивает master-файл (`include`, `includeAll`, `sqlFile`) и собирает из него два
+производных артефакта:
 
-ERD рисует https://sqltoerdiagram.com: инструмент полностью клиентский (SQL никуда не
-отправляется), поэтому картинка снимается headless-браузером с share-ссылки `#s=…`.
-Нужен docker с образом `zenika/alpine-chrome` или локальный chromium; без них скрипт
-печатает готовую ссылку и команду для ручного шага.
+  * `documentation/design/db.sql` — единый DDL для чтения и прогона в psql;
+  * `documentation/design/erd.md` — ERD на Mermaid (`erDiagram`). Mermaid рендерят GitHub и вики,
+    поэтому картинка не нужна: диаграмма остаётся текстом и диффится как код.
 
 Использование:
-  python3 .github/scripts/db_schema.py            # пересобрать db.sql
-  python3 .github/scripts/db_schema.py --check     # проверить актуальность (код 1 при расхождении)
-  python3 .github/scripts/db_schema.py --render    # пересобрать db.sql и schema.png
-  python3 .github/scripts/db_schema.py --url       # только напечатать share-ссылку
+  python3 .github/scripts/db_schema.py            # пересобрать db.sql и erd.md
+  python3 .github/scripts/db_schema.py --check     # проверить, что артефакты соответствуют чанжлогу
+  python3 .github/scripts/db_schema.py --verify    # прогнать DDL на чистой PostgreSQL в docker
+  python3 .github/scripts/db_schema.py --mermaid   # только напечатать erDiagram
 
-Зависимости — стандартная библиотека Python 3.11+.
+Зависимости — стандартная библиотека Python 3.11+. `--verify` дополнительно требует docker.
 """
 from __future__ import annotations
 
 import argparse
-import base64
-import json
-import os
-import shutil
-import socket
+import re
 import subprocess
 import sys
 import time
-import urllib.request
-import zlib
+from dataclasses import dataclass, field
 from pathlib import Path
-from urllib.parse import urlparse
+from shutil import which
 
-from yaml_subset import YamlSubset, YamlSubsetError
+from yaml_subset import YamlSubset
 
 CHANGELOG_DIR = "backend/api/src/main/resources/db/changelog"
 MASTER = CHANGELOG_DIR + "/db.changelog-master.yaml"
 DB_SQL = "documentation/design/db.sql"
-ERD_PNG = "documentation/design/schema.png"
+ERD_MD = "documentation/design/erd.md"
 
-SITE = "https://sqltoerdiagram.com/"
-CHROME_IMAGE = "zenika/alpine-chrome:latest"
-CONTAINER = "docsapp-erd"
 POSTGRES_IMAGE = "postgres:16-alpine"
 PG_CONTAINER = "docsapp-dbcheck"
-ERD_WINDOW = (1600, 1200)
-ERD_SCALE = 2
 
-HEADER = """-- DocsApp: схема базы данных.
+SQL_HEADER = """-- DocsApp: схема базы данных.
 --
 -- Файл сгенерирован из Liquibase-чанжлога {changelog}/
--- Пересобрать: `make db-schema`. ERD: {erd} (`make db-erd`).
+-- Пересобрать: `make db-schema`. ERD: documentation/design/erd.md (`make db-erd`).
 -- Руками не правим: правки перезапишутся, менять нужно чанжлог.
 --
 -- Состав:
 {parts}
 """
+
+ERD_HEADER = """# ERD: модель данных
+
+Схема БД диаграммой. Источник правды — Liquibase-чанжлог
+`{changelog}/`: из него собираются и [`db.sql`](db.sql), и диаграмма ниже
+(`make db-schema`, `make db-erd`). Руками файл не правим — меняем чанжлог.
+
+```mermaid
+{diagram}
+```
+
+## Связи
+
+Внешние ключи в том виде, в каком они объявлены в схеме: `ребёнок.колонка` → `родитель.колонка`.
+
+{relations}
+"""
+
+
+# ─────────────────────────── чанжлог ───────────────────────────
+
+def is_true(value) -> bool:
+    return str(value).strip().lower() in {"true", "1", "yes", "on"}
 
 
 def git_repo_root(start: Path) -> Path:
@@ -68,10 +79,6 @@ def git_repo_root(start: Path) -> Path:
     except (subprocess.CalledProcessError, FileNotFoundError):
         return start.resolve()
     return Path(out)
-
-
-def is_true(value) -> bool:
-    return str(value).strip().lower() in {"true", "1", "yes", "on"}
 
 
 def load_changelog(root: Path) -> tuple[list[Path], list[str]]:
@@ -145,8 +152,8 @@ def load_changelog(root: Path) -> tuple[list[Path], list[str]]:
     return files, warnings
 
 
-LIQUIBASE_DIRECTIVE = ("liquibase", "changeset", "changeSet", "rollback", "preconditions",
-                       "comment", "property", "validCheckSum")
+LIQUIBASE_DIRECTIVE = {"liquibase", "changeset", "rollback", "preconditions", "comment",
+                       "property", "validchecksum"}
 
 
 def reindent(line: str) -> str:
@@ -164,7 +171,7 @@ def clean_sql(text: str) -> str:
         stripped = line.strip()
         if stripped.startswith("--"):
             directive = stripped[2:].strip().split(":")[0].split(" ")[0].lower()
-            if directive in {name.lower() for name in LIQUIBASE_DIRECTIVE}:
+            if directive in LIQUIBASE_DIRECTIVE:
                 continue
         lines.append(reindent(line.rstrip()))
 
@@ -177,197 +184,215 @@ def clean_sql(text: str) -> str:
     return "\n".join(result)
 
 
-def build(root: Path) -> tuple[str, list[str]]:
+def plural_lines(count: int) -> str:
+    if count % 10 == 1 and count % 100 != 11:
+        return "строка"
+    if 2 <= count % 10 <= 4 and not 12 <= count % 100 <= 14:
+        return "строки"
+    return "строк"
+
+
+def collect_sql(root: Path) -> tuple[str, list[Path], list[str]]:
     files, warnings = load_changelog(root)
     if not files:
         raise SystemExit("Чанжлог не содержит SQL-файлов — собирать нечего")
 
     parts = []
     for path in files:
+        try:
+            parts.append((path, clean_sql(path.read_text(encoding="utf-8"))))
+        except (OSError, UnicodeDecodeError) as exc:
+            warnings.append("%s не читается: %s" % (path, exc))
+    return "\n\n".join(sql for _, sql in parts), [path for path, _ in parts], warnings
+
+
+def build_sql(root: Path, sql: str, files: list[Path]) -> str:
+    listing = []
+    for path in files:
         rel = path.relative_to(root).as_posix()
         try:
-            sql = clean_sql(path.read_text(encoding="utf-8"))
-        except (OSError, UnicodeDecodeError) as exc:
-            warnings.append("%s не читается: %s" % (rel, exc))
+            lines = len(clean_sql(path.read_text(encoding="utf-8")).splitlines())
+        except (OSError, UnicodeDecodeError):
             continue
-        lines = len(sql.splitlines())
-        parts.append((rel, sql, lines))
-
-    listing = "\n".join("--   %s — %d %s" % (rel, lines, "строка" if lines % 10 == 1 and lines % 100 != 11
-                                             else "строки" if 2 <= lines % 10 <= 4 and not 12 <= lines % 100 <= 14
-                                             else "строк")
-                       for rel, _, lines in parts)
-    header = HEADER.format(changelog=CHANGELOG_DIR, erd=ERD_PNG, parts=listing)
-    body = "\n\n".join(sql for _, sql, _ in parts)
-    return header + "\n" + body + "\n", warnings
+        listing.append("--   %s — %d %s" % (rel, lines, plural_lines(lines)))
+    header = SQL_HEADER.format(changelog=CHANGELOG_DIR, parts="\n".join(listing))
+    return header + "\n" + sql + "\n"
 
 
-def share_url(sql: str) -> str:
-    """Share-ссылка sqltoerdiagram.com: `#s=` + deflate-raw + base64url от JSON."""
-    payload = json.dumps({"sql": sql}, ensure_ascii=False).encode("utf-8")
-    compressor = zlib.compressobj(9, zlib.DEFLATED, -15)
-    packed = compressor.compress(payload) + compressor.flush()
-    encoded = base64.urlsafe_b64encode(packed).decode("ascii").rstrip("=")
-    return "%s?embed#s=z%s" % (SITE, encoded)
+# ─────────────────────────── разбор DDL ───────────────────────────
+
+COLUMN_KEYWORDS = ("not null", "null", "default", "primary key", "unique", "references",
+                   "check", "generated", "constraint", "collate")
+
+TABLE_RE = re.compile(r"create\s+table\s+(?:if\s+not\s+exists\s+)?([\w.]+)\s*\(", re.I)
+REFERENCES_RE = re.compile(r"references\s+([\w.]+)\s*\(\s*(\w+)\s*\)", re.I)
+COLUMN_PK_RE = re.compile(r"primary\s+key", re.I)
+TABLE_PK_RE = re.compile(r"primary\s+key\s*\(([^)]*)\)", re.I)
 
 
-class CdpError(RuntimeError):
-    """Не удалось поговорить с headless-браузером."""
+@dataclass
+class Column:
+    name: str
+    type: str
+    nullable: bool = True
+    primary: bool = False
+    reference: tuple[str, str] | None = None   # (таблица, колонка)
 
 
-def ws_connect(url: str, timeout: float = 10.0):
-    """Минимальный WebSocket-клиент (RFC 6455) — DevTools работает только по нему."""
-    parsed = urlparse(url)
-    host = parsed.hostname or "127.0.0.1"
-    port = parsed.port or 80
-    path = parsed.path or "/"
-    if parsed.query:
-        path += "?" + parsed.query
-    sock = socket.create_connection((host, port), timeout)
-    key = base64.b64encode(os.urandom(16)).decode("ascii")
-    sock.sendall(("GET %s HTTP/1.1\r\nHost: %s:%d\r\nUpgrade: websocket\r\n"
-                  "Connection: Upgrade\r\nSec-WebSocket-Key: %s\r\n"
-                  "Sec-WebSocket-Version: 13\r\n\r\n" % (path, host, port, key)).encode("ascii"))
-    data = b""
-    while b"\r\n\r\n" not in data:
-        chunk = sock.recv(4096)
-        if not chunk:
-            raise CdpError("рукопожатие WebSocket прервано")
-        data += chunk
-    if b" 101 " not in data.split(b"\r\n", 1)[0]:
-        raise CdpError("WebSocket не подтвердил переключение протокола")
-    return sock
+@dataclass
+class Table:
+    name: str
+    columns: list[Column] = field(default_factory=list)
+
+    def column(self, name: str) -> Column | None:
+        return next((column for column in self.columns if column.name == name), None)
 
 
-def ws_send(sock, payload: bytes, opcode: int = 1) -> None:
-    header = bytes([0x80 | opcode])
-    mask = os.urandom(4)
-    length = len(payload)
-    if length < 126:
-        header += bytes([0x80 | length])
-    elif length < 65536:
-        header += bytes([0x80 | 126]) + length.to_bytes(2, "big")
-    else:
-        header += bytes([0x80 | 127]) + length.to_bytes(8, "big")
-    sock.sendall(header + mask + bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload)))
+def split_table_name(raw: str) -> str:
+    return raw.split(".")[-1]
 
 
-def ws_receive(sock) -> tuple[int, bytes]:
-    def read_exact(count: int) -> bytes:
-        buffer = b""
-        while len(buffer) < count:
-            chunk = sock.recv(count - len(buffer))
-            if not chunk:
-                raise CdpError("соединение с браузером закрыто")
-            buffer += chunk
-        return buffer
+def parse_ddl(sql: str) -> list[Table]:
+    """Достаёт из DDL таблицы, колонки, первичные и внешние ключи.
 
-    first, second = read_exact(2)
-    opcode = first & 0x0F
-    length = second & 0x7F
-    if length == 126:
-        length = int.from_bytes(read_exact(2), "big")
-    elif length == 127:
-        length = int.from_bytes(read_exact(8), "big")
-    mask = read_exact(4) if second & 0x80 else None
-    payload = read_exact(length)
-    if mask:
-        payload = bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload))
-    return opcode, payload
+    Разбор намеренно простой: он читает вывод самого скрипта и Liquibase-чанжлог, а не
+    произвольный SQL, поэтому ALTER TABLE и наследование типов не поддерживаются.
+    """
+    tables: list[Table] = []
+    compact = re.sub(r"--[^\n]*", "", sql)
+    position = 0
+    while True:
+        match = TABLE_RE.search(compact, position)
+        if not match:
+            break
+        open_paren = match.end() - 1
+        depth = 0
+        end = open_paren
+        for index in range(open_paren, len(compact)):
+            if compact[index] == "(":
+                depth += 1
+            elif compact[index] == ")":
+                depth -= 1
+                if depth == 0:
+                    end = index
+                    break
+        body = compact[open_paren + 1:end]
+        position = end + 1
 
-
-class DevTools:
-    """Клиент Chrome DevTools Protocol: вызвать JS в странице и забрать результат."""
-
-    def __init__(self, url: str):
-        self.sock = ws_connect(url)
-        self.next_id = 0
-
-    def call(self, method: str, params: dict | None = None, timeout_ms: int = 120_000):
-        self.next_id += 1
-        message = {"id": self.next_id, "method": method, "params": params or {}}
-        ws_send(self.sock, json.dumps(message).encode("utf-8"))
-        deadline = time.monotonic() + timeout_ms / 1000
-        while time.monotonic() < deadline:
-            opcode, payload = ws_receive(self.sock)
-            if opcode == 8:
-                raise CdpError("браузер закрыл соединение")
-            if opcode == 9:
-                ws_send(self.sock, payload, opcode=10)
+        table = Table(name=split_table_name(match.group(1)))
+        table_keys: list[str] = []
+        for raw_line in body.splitlines():
+            line = raw_line.strip().rstrip(",").strip()
+            if not line:
                 continue
-            if opcode != 1:
+            lowered = line.lower()
+            table_pk = TABLE_PK_RE.search(line)
+            if table_pk and lowered.startswith(("primary key", "constraint", "unique")):
+                table_keys.extend(part.strip().strip('"') for part in table_pk.group(1).split(","))
                 continue
-            answer = json.loads(payload.decode("utf-8"))
-            if answer.get("id") != self.next_id:
+            if lowered.startswith(("primary key", "unique", "constraint", "check", "foreign key")):
                 continue
-            if "error" in answer:
-                raise CdpError(str(answer["error"]))
-            return answer.get("result")
-        raise CdpError("нет ответа на %s" % method)
+            parts = line.split(None, 1)
+            if len(parts) < 2:
+                continue
+            name, rest = parts[0].strip('"'), parts[1]
+            # тип — всё до первого служебного слова (берём самое левое совпадение, иначе
+            # `bigint GENERATED BY DEFAULT AS IDENTITY` разрежется по `default`)
+            cut = len(rest)
+            for keyword in COLUMN_KEYWORDS:
+                found = re.search(r"\b%s\b" % keyword.replace(" ", r"\s+"), rest, re.I)
+                if found:
+                    cut = min(cut, found.start())
+            type_text = rest[:cut]
+            column = Column(name=name, type=re.sub(r"\s+", " ", type_text).strip(),
+                            nullable="not null" not in lowered,
+                            primary=bool(COLUMN_PK_RE.search(rest)))
+            reference = REFERENCES_RE.search(rest)
+            if reference:
+                column.reference = (split_table_name(reference.group(1)), reference.group(2))
+            table.columns.append(column)
 
-    def evaluate(self, expression: str, await_promise: bool = False):
-        result = self.call("Runtime.evaluate", {
-            "expression": expression,
-            "awaitPromise": await_promise,
-            "returnByValue": True,
-        })
-        if result.get("exceptionDetails"):
-            raise CdpError(str(result["exceptionDetails"]).replace("\n", " ")[:300])
-        return result.get("result", {}).get("value")
-
-    def close(self) -> None:
-        try:
-            ws_send(self.sock, b"", opcode=8)
-        except OSError:
-            pass
-        self.sock.close()
-
-
-def page_websocket(port: int, timeout: float = 40.0) -> str:
-    """Ждёт, пока headless-браузер поднимет страницу, и отдаёт WebSocket страницы."""
-    deadline = time.monotonic() + timeout
-    last = ""
-    while time.monotonic() < deadline:
-        try:
-            with urllib.request.urlopen("http://127.0.0.1:%d/json" % port, timeout=3) as response:
-                targets = json.loads(response.read().decode("utf-8"))
-            pages = [t for t in targets if t.get("type") == "page" and t.get("webSocketDebuggerUrl")]
-            if pages:
-                return pages[0]["webSocketDebuggerUrl"]
-            last = "страниц нет"
-        except (OSError, ValueError) as exc:
-            last = str(exc)
-        time.sleep(0.5)
-    raise CdpError("браузер не поднялся: %s" % last)
+        for key in table_keys:
+            column = table.column(key)
+            if column is not None:
+                column.primary = True
+        if table.columns:
+            tables.append(table)
+    tables.sort(key=lambda item: item.name)
+    return tables
 
 
-def chromium_container(url: str, port: int) -> list[str]:
-    return ["docker", "run", "--rm", "--init", "--name", CONTAINER, "--network", "host",
-            CHROME_IMAGE,
-            "--headless", "--no-sandbox", "--no-zygote", "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage", "--disable-gpu", "--hide-scrollbars",
-            "--disable-background-timer-throttling", "--disable-renderer-backgrounding",
-            "--remote-debugging-address=0.0.0.0", "--remote-debugging-port=%d" % port,
-            "--window-size=%d,%d" % ERD_WINDOW, url]
+# ─────────────────────────── Mermaid ───────────────────────────
+
+MERMAID_TYPE_RE = re.compile(r"[^A-Za-z0-9_\-()\[\]]+")
 
 
-WAIT_LAYOUT_JS = """(() => {
-  const busy = document.querySelector('.busy-chip');
-  const renderer = window.__dbdiga;
-  const tables = renderer && renderer.model ? renderer.model.tables.length : 0;
-  return {ready: (!busy || busy.hidden) && tables > 0, tables};
-})()"""
+def mermaid_type(raw: str) -> str:
+    """Mermaid допускает в типе буквы, цифры и `- _ ( ) [ ]`; остальное схлопываем в `_`."""
+    value = MERMAID_TYPE_RE.sub("_", raw.strip()).strip("_")
+    if not value:
+        return "text"
+    if not value[0].isalpha():
+        return "t_" + value
+    return value
 
-EXPORT_JS = """(async () => {
-  const renderer = window.__dbdiga;
-  if (!renderer || typeof renderer.exportPNG !== 'function') return null;
-  return renderer.exportPNG(%d);
-})()"""
 
+def mermaid_name(raw: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_\-()\[\]]+", "_", raw.strip()) or "column"
+
+
+def render_mermaid(tables: list[Table]) -> str:
+    lines = ["erDiagram"]
+    for table in tables:
+        lines.append("    %s {" % table.name)
+        for column in table.columns:
+            keys = []
+            if column.primary:
+                keys.append("PK")
+            if column.reference:
+                keys.append("FK")
+            suffix = (" " + ", ".join(keys)) if keys else ""
+            lines.append("        %s %s%s" % (mermaid_type(column.type),
+                                              mermaid_name(column.name), suffix))
+        lines.append("    }")
+    for table in tables:
+        for column in table.columns:
+            if not column.reference:
+                continue
+            parent = column.reference[0]
+            # у родителя ровно одна запись, у ребёнка — много; nullable FK допускает ноль
+            left = "|o" if column.nullable else "||"
+            lines.append('    %s %s--o{ %s : "%s.%s"' % (
+                parent, left, table.name, table.name, column.name))
+    return "\n".join(lines)
+
+
+def render_relations(tables: list[Table]) -> str:
+    rows = ["| Ребёнок | Колонка | Родитель | Колонка | Обязательная |",
+            "|---|---|---|---|---|"]
+    found = False
+    for table in tables:
+        for column in table.columns:
+            if not column.reference:
+                continue
+            found = True
+            parent, parent_column = column.reference
+            rows.append("| `%s` | `%s` | `%s` | `%s` | %s |" % (
+                table.name, column.name, parent, parent_column,
+                "нет" if column.nullable else "да"))
+    return "\n".join(rows) if found else "_Внешних ключей нет._"
+
+
+def build_erd(tables: list[Table]) -> str:
+    return ERD_HEADER.format(changelog=CHANGELOG_DIR, diagram=render_mermaid(tables),
+                             relations=render_relations(tables))
+
+
+# ─────────────────────────── проверка DDL ───────────────────────────
 
 def verify(sql_path: Path, dry_run: bool) -> int:
     """Прогоняет db.sql на чистой PostgreSQL в docker: черновик схемы должен хотя бы выполняться."""
-    if not shutil.which("docker"):
+    if which("docker") is None:
         print("Нет docker — проверить DDL нечем.", file=sys.stderr)
         return 1
     command = ["docker", "run", "-d", "--rm", "--name", PG_CONTAINER,
@@ -380,6 +405,7 @@ def verify(sql_path: Path, dry_run: bool) -> int:
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
+
         # контейнер поднимается в два приёма: временный сервер для initdb, затем настоящий.
         # ждём двух успешных ответов подряд — иначе psql попадает на временный и теряет связь
         def probe() -> bool:
@@ -396,6 +422,7 @@ def verify(sql_path: Path, dry_run: bool) -> int:
         else:
             print("PostgreSQL не поднялась за 90 с", file=sys.stderr)
             return 1
+
         applied = subprocess.run(
             ["docker", "exec", PG_CONTAINER, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=1",
              "-q", "-f", "/sql/%s" % sql_path.name], capture_output=True, text=True)
@@ -416,96 +443,62 @@ def verify(sql_path: Path, dry_run: bool) -> int:
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def render(url: str, target: Path, dry_run: bool) -> int:
-    target.parent.mkdir(parents=True, exist_ok=True)
-    if not shutil.which("docker"):
-        print("Нет docker с образом %s — картинку не снять." % CHROME_IMAGE, file=sys.stderr)
-        print("Откройте %s и сохраните PNG в %s." % (url, target), file=sys.stderr)
-        return 1
-
-    port = 9222
-    command = chromium_container(url, port)
-    if dry_run:
-        print(" ".join(command))
-        return 0
-
-    print("Рисую ERD через %s (headless chromium, docker)…" % SITE, flush=True)
-    process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    devtools = None
-    try:
-        devtools = DevTools(page_websocket(port))
-        devtools.call("Runtime.enable")
-        deadline = time.monotonic() + 90
-        while time.monotonic() < deadline:
-            state = devtools.evaluate(WAIT_LAYOUT_JS)
-            if isinstance(state, dict) and state.get("ready"):
-                break
-            time.sleep(0.5)
-        else:
-            raise CdpError("схема не разложилась за 90 с")
-
-        time.sleep(1.0)  # шрифты и финальная отрисовка
-        data_url = devtools.evaluate(EXPORT_JS % ERD_SCALE, await_promise=True)
-        if not isinstance(data_url, str) or "," not in data_url:
-            raise CdpError("сайт не отдал PNG")
-        target.write_bytes(base64.b64decode(data_url.split(",", 1)[1]))
-        print("ERD: %s (%d КБ)" % (target, target.stat().st_size // 1024))
-        return 0
-    except CdpError as exc:
-        print("Не удалось снять ERD: %s" % exc, file=sys.stderr)
-        print("Откройте вручную: %s" % url, file=sys.stderr)
-        return 1
-    finally:
-        if devtools is not None:
-            devtools.close()
-        process.terminate()
-        subprocess.run(["docker", "rm", "-f", CONTAINER],
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
+# ─────────────────────────── CLI ───────────────────────────
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="DDL и ERD из Liquibase-чанжлога")
+    parser = argparse.ArgumentParser(description="DDL и ERD (Mermaid) из Liquibase-чанжлога")
     parser.add_argument("--root", default=".", help="корень репозитория")
     parser.add_argument("--check", action="store_true",
-                        help="не писать db.sql, а проверить, что он совпадает с чанжлогом")
-    parser.add_argument("--render", action="store_true", help="перерисовать schema.png")
+                        help="не писать файлы, а проверить их соответствие чанжлогу")
     parser.add_argument("--verify", action="store_true",
                         help="прогнать db.sql на чистой PostgreSQL в docker")
-    parser.add_argument("--url", action="store_true", help="только напечатать share-ссылку")
+    parser.add_argument("--mermaid", action="store_true", help="только напечатать erDiagram")
     parser.add_argument("--print-command", action="store_true",
-                        help="показать команду снимка, ничего не запуская")
+                        help="показать команду проверки, ничего не запуская")
     args = parser.parse_args(argv)
 
     root = git_repo_root(Path(args.root).resolve())
-    sql, warnings = build(root)
+    sql, files, warnings = collect_sql(root)
     for warning in dict.fromkeys(warnings):
         print("⚠ %s" % warning, file=sys.stderr)
 
-    if args.url:
-        print(share_url(sql))
+    tables = parse_ddl(sql)
+
+    if args.mermaid:
+        print(render_mermaid(tables))
         return 0
 
-    target = root / DB_SQL
+    artifacts = {
+        root / DB_SQL: build_sql(root, sql, files),
+        root / ERD_MD: build_erd(tables),
+    }
+
+    relations = sum(1 for table in tables for column in table.columns if column.reference)
+
     if args.check:
-        current = target.read_text(encoding="utf-8") if target.is_file() else ""
-        if current != sql:
-            print("%s расходится с чанжлогом." % DB_SQL)
+        stale = [path for path, content in artifacts.items()
+                 if not path.is_file() or path.read_text(encoding="utf-8") != content]
+        if stale:
+            print("Расходится с чанжлогом: %s" % ", ".join(
+                path.relative_to(root).as_posix() for path in stale))
             print("Пересоберите: make db-schema")
             return 1
-        print("%s соответствует чанжлогу (%d строк)" % (DB_SQL, len(sql.splitlines())))
+        print("db.sql и erd.md соответствуют чанжлогу: %d таблиц, %d %s" % (
+            len(tables), relations, "внешний ключ" if relations == 1 else "внешних ключей"))
         return 0
 
-    if target.is_file() and target.read_text(encoding="utf-8") == sql:
-        print("%s уже актуален (%d строк)" % (DB_SQL, len(sql.splitlines())))
-    else:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(sql, encoding="utf-8")
-        print("%s пересобран из чанжлога (%d строк)" % (DB_SQL, len(sql.splitlines())))
+    for path, content in artifacts.items():
+        rel = path.relative_to(root).as_posix()
+        current = path.read_text(encoding="utf-8") if path.is_file() else None
+        if current == content:
+            print("%s уже актуален" % rel)
+            continue
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        print("%s пересобран из чанжлога" % rel)
 
     if args.verify:
-        return verify(target, dry_run=args.print_command)
-    if args.render:
-        return render(share_url(sql), root / ERD_PNG, dry_run=args.print_command)
+        return verify(root / DB_SQL, dry_run=args.print_command)
     return 0
 
 

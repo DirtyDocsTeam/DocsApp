@@ -78,12 +78,12 @@ C4-диаграмма — источник правды; ниже — где о�
 
 ## Модель данных
 
-![ERD: 12 таблиц PostgreSQL](schema.png)
+Диаграмма — на отдельной странице: **[ERD: модель данных](erd.md)** (Mermaid, рендерится в GitHub
+и вики). Сейчас это 12 таблиц и 15 внешних ключей.
 
-Схема живёт в Liquibase-чанжлоге `backend/api/src/main/resources/db/changelog/`: из него собирается
-[`db.sql`](db.sql) (`make db-schema`) и он же — источник ERD выше (`make db-erd`, рендер через
-[sqltoerdiagram.com](https://sqltoerdiagram.com)). Оба артефакта производные: правки вносим в чанжлог,
-`make db-check` в CI ловит расхождение.
+Схема живёт в Liquibase-чанжлоге `backend/api/src/main/resources/db/changelog/`: из него собираются
+и [`db.sql`](db.sql) (`make db-schema`), и [`erd.md`](erd.md) (`make db-erd`). Оба артефакта
+производные: правки вносим в чанжлог, `make db-check` в CI ловит расхождение.
 
 ## Открытые вопросы
 
