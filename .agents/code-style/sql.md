@@ -4,7 +4,7 @@ These conventions are based on the database practices in SpectraBackend. They ap
 
 ## Migrations and schema evolution
 
-- Treat `documentation/media/db.sql` as a schema reference, not a migration mechanism. Put production schema evolution in ordered, reviewable changelog migrations. If Liquibase is adopted, keep a versioned master changelog that includes numbered SQL changesets (for example, `001-initial-schema.sql`, `002-...sql`).
+- The Liquibase changelog in `backend/api/src/main/resources/db/changelog/` (master YAML plus numbered SQL changesets such as `001-initial-schema.sql`) is the source of truth for the schema. Put schema evolution there: one numbered changeset per change, never edit an already-applied one. `documentation/design/db.sql` and the ERD are generated from the changelog for review — treat them as derived artifacts, not as a migration mechanism.
 - Each migration must have one coherent purpose, be safe for the deployment model, and state non-obvious invariants in SQL comments. Use a transaction when the database operation supports it; explicitly document exceptions such as concurrent index creation.
 - For destructive or data-transforming changes, plan rollout order, backward compatibility with running application versions, backfill, locks, and recovery. Do not edit an already-applied migration; add a new migration.
 
