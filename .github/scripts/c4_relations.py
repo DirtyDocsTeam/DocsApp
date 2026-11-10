@@ -47,6 +47,7 @@ class Node:
     name: str
     kind: str = ""
     technology: str = ""
+    position: tuple[float, float] = (0.0, 0.0)
 
 
 @dataclass
@@ -85,11 +86,46 @@ def arrowhead_of(style: str) -> str:
     return "none"
 
 
+def positions(root) -> dict[str, tuple[float, float]]:
+    """Абсолютные координаты узлов: у детей групп координаты относительные, суммируем по цепочке."""
+    raw: dict[str, tuple[str, float, float]] = {}
+    for element in root.iter():
+        if element.tag not in {"object", "UserObject", "mxCell"}:
+            continue
+        cid = element.get("id")
+        if not cid:
+            continue
+        cell = element.find("mxCell") if element.tag != "mxCell" else element
+        if cell is None:
+            continue
+        geo = cell.find("mxGeometry")
+        try:
+            x = float(geo.get("x")) if geo is not None and geo.get("x") is not None else 0.0
+            y = float(geo.get("y")) if geo is not None and geo.get("y") is not None else 0.0
+        except ValueError:
+            x = y = 0.0
+        raw[cid] = (cell.get("parent") or "", x, y)
+
+    absolute: dict[str, tuple[float, float]] = {}
+    for cid in raw:
+        x = y = 0.0
+        cursor, depth = cid, 0
+        while cursor in raw and depth < 20:
+            parent, px, py = raw[cursor]
+            x += px
+            y += py
+            cursor = parent
+            depth += 1
+        absolute[cid] = (y, x)
+    return absolute
+
+
 def load(drawio: Path) -> tuple[dict[str, Node], list[Edge], list[str]]:
     """Узлы C4 хранятся как `<object c4Name=…>`, рёбра и подписи — как `<mxCell>`."""
     warnings: list[str] = []
     root = ET.fromstring(drawio.read_text(encoding="utf-8"))
 
+    geometry = positions(root)
     nodes: dict[str, Node] = {}
     for element in root.iter():
         if element.tag not in {"object", "UserObject", "mxCell"}:
@@ -107,6 +143,7 @@ def load(drawio: Path) -> tuple[dict[str, Node], list[Edge], list[str]]:
             continue
         nodes[nid] = Node(nid=nid, name=name, kind=clean(element.get("c4Type") or ""),
                           technology=clean(element.get("c4Technology") or ""))
+        nodes[nid].position = geometry.get(nid, (0.0, 0.0))
 
     labels: dict[str, list[str]] = {}
     edges: list[Edge] = []
@@ -138,8 +175,13 @@ def load(drawio: Path) -> tuple[dict[str, Node], list[Edge], list[str]]:
 
 def build(nodes: dict[str, Node], edges: list[Edge]) -> list[tuple[str, str, str, str, str]]:
     """Строки таблицы: одинаковые связи схлопываются, id рёбер перечисляются через запятую."""
+    def place(nid: str) -> tuple[float, float]:
+        return nodes[nid].position if nid in nodes else (1e9, 1e9)
+
+    ordered = sorted(edges, key=lambda edge: (place(edge.direction[0]), place(edge.direction[1])))
+
     grouped: dict[tuple[str, str, str, str], list[str]] = {}
-    for edge in edges:
+    for edge in ordered:
         origin_id, dest_id = edge.direction
         origin = nodes[origin_id].name if origin_id in nodes else "узел …%s" % origin_id[-3:]
         dest = nodes[dest_id].name if dest_id in nodes else "узел …%s" % dest_id[-3:]
@@ -151,23 +193,34 @@ def build(nodes: dict[str, Node], edges: list[Edge]) -> list[tuple[str, str, str
 
 def render(rows: list[tuple[str, str, str, str, str]], edges_count: int,
            warnings: list[str]) -> str:
+    def pair(origin: str, dest: str, arrow: str) -> str:
+        return "%s %s %s" % (origin, "—" if arrow == ARROW_LABEL["none"] else "→", dest)
+
     lines = ["", "", BEGIN, "",
-             "Связи контекста C4. Направление — **по наконечнику стрелки** в "
-             "[`context.drawio`](context.drawio): `A → B` значит «взаимодействие идёт из A в B», "
-             "то есть наконечник нарисован у B. Порядок слов в подписи ребра "
-             "(`gRPC [Token validate]`) направления не задаёт. Символ `—` означает, что на ребре "
-             "наконечника нет (ассоциация). Всего рёбер: %d." % edges_count,
+             "Кто с кем разговаривает — в порядке диаграммы, сверху вниз. `—` вместо стрелки значит, "
+             "что на ребре нет наконечника (просто связь). Всего связей: %d." % edges_count,
              ""]
     for warning in warnings:
         lines += ["> ⚠ %s" % warning, ""]
     if warnings:
         lines.append("")
-    lines += ["| Откуда | Куда | Подпись в диаграмме | Наконечник | id ребра |",
-              "|---|---|---|---|---|"]
+
+    lines += ["| Связь | Канал и данные |", "|---|---|"]
+    for origin, dest, label, arrow, _ in rows:
+        channel = "`%s`" % label if label != "—" else "—"
+        if arrow == ARROW_LABEL["none"]:
+            channel += " (линия без наконечника)"
+        lines.append("| %s | %s |" % (pair(origin, dest, arrow), channel))
+
+    lines += ["", "<details>", "<summary>Служебное: сверка с диаграммой</summary>", "",
+              "Каждая строка выше соответствует ребру в [`context.drawio`](context.drawio). "
+              "Колонка «наконечник» показывает, у какого конца он нарисован — по ней и вычислено "
+              "направление; `id` позволяет найти ребро в файле.", "",
+              "| Связь | Подпись в диаграмме | Наконечник | id ребра |", "|---|---|---|---|"]
     for origin, dest, label, arrow, ids in rows:
-        lines.append("| %s | %s | %s | %s | %s |" % (
-            origin, dest, "`%s`" % label if label != "—" else "—", arrow, ids))
-    lines += ["", END, ""]
+        lines.append("| %s | %s | %s | %s |" % (
+            pair(origin, dest, arrow), "`%s`" % label if label != "—" else "—", arrow, ids))
+    lines += ["", "</details>", "", END, ""]
     return "\n".join(lines)
 
 
