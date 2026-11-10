@@ -52,18 +52,48 @@
 
 **Связи и протоколы:**
 
-- WEB Client и API Client → Ingress: `REST/GQL`.
-- Ingress → Main API Plane: `GQL [Main work]`; Ingress → IDProvider: `REST [OIDC]`;
-  Ingress → S3 Gateway Plane: `S3 (Ext path) [Web static, Media artifacts]`.
-- Main API Plane → IDProvider: `REST [Token validate]`; → Main Database: `SQLConn [App data, Job data]`;
-  → S3 Gateway Plane: `gRPC [ID → S3://path, Token validate]`.
-- IDProvider → External IDP: федерация; → Main Database: `SQLConn [ID data]`.
-- S3 Gateway Plane → Object storage: `S3 (Int path)`.
-- Main API Plane → Worker Pool: `gRPC [Job assign]`; Worker Pool → Main API Plane: `gRPC [Announce]`.
-- Worker Pool → Object storage: `S3 [Media artifacts]`; `WorkerG-N` → External LLM.
+Направление связи задаёт **наконечник стрелки** в диаграмме, а не порядок слов в подписи ребра.
+Таблица ниже — производная от [`context.drawio`](context.drawio): её генерирует
+`.github/scripts/c4_relations.py` (`make c4-relations`), CI сверяет её с диаграммой (`make c4-check`);
+руками блок не правим — сначала меняем диаграмму.
 
-Ключевое следствие для безопасности: клиент не получает доступ к бакету — только путь или подписанную
-ссылку, выданную после проверки токена (см. «Открытые вопросы», п. 3).
+<!-- c4-relations:begin — таблица генерируется `.github/scripts/c4_relations.py` из `context.drawio`; правки внутри блока перезапишутся -->
+
+Связи контекста C4. Направление — **по наконечнику стрелки** в [`context.drawio`](context.drawio): `A → B` значит «взаимодействие идёт из A в B», то есть наконечник нарисован у B. Порядок слов в подписи ребра (`gRPC [Token validate]`) направления не задаёт. Символ `—` означает, что на ребре наконечника нет (ассоциация). Всего рёбер: 17.
+
+| Откуда | Куда | Подпись в диаграмме | Наконечник | id ребра |
+|---|---|---|---|---|
+| Пользователь | API Client | — | нет | …-37 |
+| Пользователь | WEB Client | — | нет | …-38 |
+| WEB Client | Ingress | `REST/GQL` | у «куда» | …-39 |
+| IDProvider | Main Database | `SQLConn [ID data]` | у «куда» | …-56 |
+| Main API Plane | IDProvider | `REST[Token validate]` | у «куда» | …-60 |
+| Main API Plane | Main Database | `SQLConn [App data] [Job data]` | у «куда» | …-65 |
+| Ingress | Main API Plane | `GQL [Main work]` | у «куда» | …-53 |
+| Ingress | IDProvider | `REST [OIDC]` | у «куда» | …-54 |
+| Ingress | S3 Gateway Plane | `S3 (Ext path) [Web static] [Media artifacts]` | у «куда» | …-51 |
+| S3 Gateway Plane | Main API Plane | `gRPC[ID -> S3://path] [Token validate]` | у «откуда» | …-63 |
+| S3 Gateway Plane | Object storage | `S3 (Int path) [Web static] [Media artifacts]` | у «куда» | …-69 |
+| Main API Plane | Worker Pool | `gRPC [Job assign]` | у «куда» | …-79 |
+| Worker Pool | Main API Plane | `gRPC [Announce]` | у «откуда» | …-80 |
+| Worker Pool | Object storage | `S3 [Media artifacts]` | у «куда» | …-83 |
+| IDProvider | External IDP | `REST [ID data]` | у «куда» | …-72 |
+| API Client | Ingress | `REST/GQL` | у «куда» | …-49 |
+| WorkerG-N | External LLM | `REST [Completion]` | у «куда» | …-87 |
+
+<!-- c4-relations:end -->
+
+Следствия, которые важно держать в голове:
+
+- Шлюз S3 сам клиента не обслуживает: по наконечнику связь `gRPC [ID → S3://path, Token validate]`
+  идёт **из S3 Gateway Plane в Main API Plane** — шлюз спрашивает API, а не наоборот. Контракт этого
+  вызова принадлежит Main API Plane, у шлюза своей gRPC-поверхности нет.
+- `gRPC [Job assign]` идёт из API в Worker Pool, `gRPC [Announce]` — обратно из воркеров в API.
+- LLM вызывает только `WorkerG-N` (`REST [Completion]`), и это единственная связь, выходящая за
+  границу `DirtyDocs`, кроме федерации с внешним IDP: любой другой трафик наружу — изменение
+  архитектуры, а не деталь реализации.
+- Ключевое следствие для безопасности: клиент не получает доступ к бакету — только путь или
+  подписанную ссылку, выданную после проверки токена (см. «Открытые вопросы», п. 3).
 
 ## Соответствие артефактов C4
 

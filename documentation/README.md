@@ -16,7 +16,7 @@ DOCX / PDF / ODT с соблюдением стилей — библиотека
 | Путь | Что внутри | Куда попадает в вики |
 |---|---|---|
 | `README.md` | этот файл: описание проекта и правила работы с каталогом | содержание страницы **Home** (отдельной страницей не публикуется) |
-| `design/` | архитектура: [лендинг раздела](design/README.md), [C4-контекст, отклонения, ERD и черновик схемы БД](design/design.md) | страницы `design` и `design--design` + **Artifacts** для картинок и `db.sql` |
+| `design/` | архитектура: [лендинг раздела](design/README.md), [C4-контекст, отклонения, ERD и черновик схемы БД](design/design.md); таблица связей C4 в `design.md` генерируется из `context.drawio` | страницы `design` и `design--design` + **Artifacts** для картинок и `db.sql` |
 | `api/` | контракты API, **собранные из кода** (`index.md`, `rest.md`, `graphql.md`, `grpc.md`); в git не хранится — генерируется перед публикацией | страницы `api`, `api--rest`, `api--graphql`, `api--grpc` |
 | `glossary.md` | [глоссарий](glossary.md): канонические термины предметной области и открытые вопросы по терминологии | страница `glossary` |
 | `research/` | [лендинг раздела](research/README.md) и исследования с проверенными цифрами: извлечение стилей из DOCX, конвейер «книга → Markdown», [PoC-скрипт](research/poc/README.md) | страницы `research`, `research--<имя-файла>`, `research--poc` |
@@ -48,6 +48,10 @@ DOCX / PDF / ODT с соблюдением стилей — библиотека
   (понедельник, 06:00 UTC) — чтобы подтянуть даты последних коммитов в индекс страниц.
 - **Workflow:** `.github/workflows/docs-wiki-sync.yml`, генератор — `.github/scripts/wiki_sync.py`
   (только стандартная библиотека Python).
+- **Таблица связей C4 не пишется руками:** `.github/scripts/c4_relations.py` строит её из
+  `documentation/design/context.drawio`, где направление задано наконечником стрелки
+  (`make c4-relations`). CI проверяет соответствие (`make c4-check`) и падает, если текст разошёлся
+  с диаграммой.
 - **Контракты API собираются перед синхронизацией:** шаг `make api-docs` (скрипт
   `.github/scripts/api_docs.py`) перегенерирует `documentation/api/` из кода — REST по аннотациям
   Jakarta REST, GraphQL по MicroProfile GraphQL, gRPC по `.proto`; готовые OpenAPI (JSON) и SDL

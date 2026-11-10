@@ -84,12 +84,16 @@ description = "Основное API приложения: приём и орке
   artifacts = []
 
 # ─────────────────────────── S3 Gateway Plane ───────────────────────────
-# Go-сервис контролируемого доступа клиентов к объектному хранилищу. По C4 у него две роли:
-# внешние пути для статики и медиа (REST-контракт) и внутренние вызовы от Main API Plane
-# (`gRPC [ID → S3://path, Token validate]`). Кода пока нет, поэтому:
-#   * REST-поверхность собирается из декларативного `api-contracts.yaml` рядом с сервисом;
-#     когда появится Go-реализация, положите OpenAPI в JSON в `artifacts` — он важнее YAML;
-#   * gRPC-поверхность — заглушка: страница честно скажет, что `.proto` ещё нет.
+# Go-сервис контролируемого доступа клиентов к объектному хранилищу: внешние пути для статики и
+# медиа. Кода пока нет, поэтому REST-поверхность собирается из декларативного `api-contracts.yaml`
+# рядом с сервисом; когда появится Go-реализация, положите OpenAPI в JSON в `artifacts` — он важнее
+# YAML.
+#
+# Своей gRPC-поверхности у шлюза нет: в C4 наконечник ребра `gRPC [ID → S3://path, Token validate]`
+# нарисован у Main API Plane, то есть вызов идёт из шлюза в API (направление задаёт наконечник, а не
+# порядок слов в подписи; см. таблицу связей в `documentation/design/design.md`, она генерируется
+# из `context.drawio`). Контракт этого вызова — `.proto` источника `main-api`; отдельная
+# gRPC-поверхность появится здесь только если у шлюза будут собственные серверные методы.
 [[source]]
 id = "s3-gateway"
 title = "S3 Gateway Plane"
@@ -105,11 +109,3 @@ description = "Единая точка доступа клиентов к объ
   include = ["api-contracts.yaml"]
   exclude = []
   artifacts = ["openapi.json", "build/openapi.json"]
-
-  [[source.surface]]
-  kind = "grpc"
-  enabled = true
-  framework = "proto"
-  include = ["proto/**/*.proto", "*.proto"]
-  exclude = []
-  artifacts = []
