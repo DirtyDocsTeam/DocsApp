@@ -1,0 +1,111 @@
+# api-docs.toml — правила сбора контрактов API из кода.
+#
+# Единственный конфиг для `.github/scripts/api_docs.py`: по нему скрипт читает код и пересобирает
+# страницы `documentation/api/` (index + rest + graphql + grpc), которые workflow `docs → wiki`
+# публикует в GitHub Wiki. Правки в страницы вики перезаписываются — контракт живёт в коде, здесь
+# только правила его сбора.
+#
+# Быстрый старт:
+#   make api-docs         # пересобрать documentation/api/
+#   make api-docs-check   # проверить, что страницы соответствуют коду (код возврата 1 при расхождении)
+#
+# Ключи поверхности (`[[source.surface]]`):
+#   kind      — `rest`, `graphql` или `grpc`; определяет страницу-приёмник.
+#   enabled   — `false` выключает поверхность, не удаляя её из конфига (страница пояснит, что выключено).
+#   framework — адаптер разбора. Поддержано сейчас:
+#                 `quarkus`, `jakarta-rest`, `jaxrs`  → REST по аннотациям Jakarta REST (Kotlin/Java);
+#                 `microprofile-graphql`, `quarkus`   → GraphQL по MicroProfile GraphQL (Kotlin/Java);
+#                 `proto`                             → gRPC по `.proto` (языконезависимо);
+#                 `api-contracts`                     → REST по декларативному YAML-контракту
+#                                                       (см. `backend/s3-gateway/api-contracts.yaml`).
+#               Неизвестная пара «kind + framework» не ломает сборку: страница выйдет с пояснением и
+#               предупреждением в лог, а остальные поверхности соберутся как обычно.
+#   include   — glob относительно `root` источника; `**` включает вложенные каталоги.
+#   exclude   — glob, выкидывающий файлы из выборки (тесты, сгенерированный код, вендоринг).
+#               `include`/`exclude` можно задать и на уровне источника: поверхность унаследует их,
+#               если своих не задала.
+#   artifacts — готовые спецификации из сборки. Если файл существует, он важнее статического разбора:
+#                 REST    — OpenAPI 3 в JSON (`.json`);
+#                 GraphQL — SDL (`.graphql`).
+#               YAML-спеки из сборки не читаются: под рукой только стандартная библиотека Python,
+#               а YAML-парсера в ней нет. Выгрузите спеку в JSON — она подхватится. (Декларативный
+#               YAML-контракт — отдельная история, см. `api-contracts` ниже.)
+#
+# Декларативный контракт (`framework = "api-contracts"`) — для сервисов, где контракт ещё не
+# выражен кодом/аннотациями. Формат файла: блок на сервис, внутри `host`, необязательное
+# `description` и список `paths`; в каждом пути — `path` (обязателен), `method`, `type`
+# (что отдаёт/принимает), `description`/`summary`, `headers`. Шаблоны вида `{resource_id}`
+# становятся path-параметрами. Поддерживается подмножество YAML: отображения, списки, скаляры
+# и блочные строки (`|`, `>`); flow-стиль `{}`/`[]`, якоря и теги — ошибка с номером строки.
+#
+# Источников может быть сколько угодно: новый контейнер (C#/Python воркеры, frontend)
+# добавляется отдельным блоком `[[source]]` со своим `root` и `framework`.
+
+version = 1
+
+[output]
+# Куда писать страницы (относительно корня репозитория). Каталог генерируется и в git не коммитится:
+# истина — код и этот конфиг, вики пересобирается из них на каждом запуске workflow.
+dir = "documentation/api"
+
+# ─────────────────────────── Main API Plane ───────────────────────────
+# Quarkus 3 / Kotlin. Отдаёт REST и GraphQL клиентам (WEB, API Client) и gRPC — воркерам.
+# Все три поверхности собираются из одного дерева исходников; для gRPC контракт — сами `.proto`.
+[[source]]
+id = "main-api"
+title = "Main API Plane"
+enabled = true
+root = "backend/api"
+framework = "quarkus"
+description = "Основное API приложения: приём и оркестрация задач, стили и темы, задания конвертации."
+
+  [[source.surface]]
+  kind = "rest"
+  enabled = true
+  framework = "jakarta-rest"
+  include = ["src/main/kotlin/**/*.kt", "src/main/java/**/*.java"]
+  exclude = ["src/test/**", "src/native-test/**", "**/*Test.kt", "**/*IT.kt"]
+  artifacts = ["build/generated/openapi/openapi.json", "build/openapi.json"]
+
+  [[source.surface]]
+  kind = "graphql"
+  enabled = true
+  framework = "microprofile-graphql"
+  include = ["src/main/kotlin/**/*.kt", "src/main/java/**/*.java"]
+  exclude = ["src/test/**", "src/native-test/**", "**/*Test.kt", "**/*IT.kt"]
+  artifacts = ["build/generated/graphql/schema.graphql", "src/main/resources/graphql/schema.graphql"]
+
+  [[source.surface]]
+  kind = "grpc"
+  enabled = true
+  framework = "proto"
+  include = ["src/main/proto/**/*.proto", "src/main/proto/*.proto"]
+  exclude = []
+  artifacts = []
+
+# ─────────────────────────── S3 Gateway Plane ───────────────────────────
+# Go-сервис контролируемого доступа клиентов к объектному хранилищу: внешние пути для статики и
+# медиа. Кода пока нет, поэтому REST-поверхность собирается из декларативного `api-contracts.yaml`
+# рядом с сервисом; когда появится Go-реализация, положите OpenAPI в JSON в `artifacts` — он важнее
+# YAML.
+#
+# Своей gRPC-поверхности у шлюза нет: в C4 наконечник ребра `gRPC [ID → S3://path, Token validate]`
+# нарисован у Main API Plane, то есть вызов идёт из шлюза в API (направление задаёт наконечник, а не
+# порядок слов в подписи; см. таблицу связей в `documentation/design/design.md`, она генерируется
+# из `context.drawio`). Контракт этого вызова — `.proto` источника `main-api`; отдельная
+# gRPC-поверхность появится здесь только если у шлюза будут собственные серверные методы.
+[[source]]
+id = "s3-gateway"
+title = "S3 Gateway Plane"
+enabled = true
+root = "backend/s3-gateway"
+framework = "api-contracts"
+description = "Единая точка доступа клиентов к объектному хранилищу: внешние пути для статики и медиа, проверка токена."
+
+  [[source.surface]]
+  kind = "rest"
+  enabled = true
+  framework = "api-contracts"
+  include = ["api-contracts.yaml"]
+  exclude = []
+  artifacts = ["openapi.json", "build/openapi.json"]
