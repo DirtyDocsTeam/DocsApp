@@ -1,5 +1,7 @@
 # C# style
 
+C# is used by the conversion (`WorkerC-N`) and validation (`WorkerV-N`) workers, not by the API plane — the Main API Plane is Quarkus/JVM (see [`kotlin.md`](kotlin.md)).
+
 - Follow the local project's `.editorconfig`, analyzers, formatter, nullable settings, and SDK target when present; they override this guide.
 - Keep one primary type per file. Use file-scoped namespaces and top-level `using` directives in new code unless the target project consistently uses another form.
 - Use PascalCase for namespaces, types, methods, properties, events, and public fields. Use camelCase for parameters and local variables; use `_camelCase` for private fields when the module does so.

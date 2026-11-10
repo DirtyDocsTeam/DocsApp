@@ -1,6 +1,6 @@
 # Kotlin/JVM style
 
-These conventions are based on the Kotlin practices in SpectraBackend and apply when DocsApp contains Kotlin/JVM code. The local Gradle configuration, Kotlin compiler settings, framework conventions, and formatter/linter take precedence.
+These conventions apply to the C4 Main API Plane (`backend/api`, Quarkus on the JVM in Kotlin) and to any later Kotlin/JVM service. They are based on the Kotlin practices in SpectraBackend. The local Gradle configuration, Kotlin compiler settings, framework conventions, and formatter/linter take precedence.
 
 ## Layout and naming
 
