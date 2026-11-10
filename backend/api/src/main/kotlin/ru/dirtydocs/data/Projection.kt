@@ -179,6 +179,10 @@ class SelectedProjection<T : Any> internal constructor(
 ) {
     fun wrap(record: Record): T = factory.create(record, mapping)
 
+    /** Adds a caller-supplied predicate without bypassing the projection's access condition. */
+    fun where(additionalCondition: Condition): SelectedProjection<T> =
+        SelectedProjection(table, id, condition.and(additionalCondition), fields, mapping, factory)
+
     fun fetchById(dsl: DSLContext, value: Long): T? =
         dsl.select(fields).from(table)
             .where(condition).and(id.eq(value))
@@ -315,8 +319,7 @@ class OneRelation<C : Any>(
 /** 1:N; relation metadata, including aliased foreign key, is resolved lazily. */
 class ManyRelation<C : Any>(
     private val childProvider: () -> Projection<C>,
-    private val childForeignKey: (Projection<C>) -> Field<Long?>,
-    private val parentKey: Field<Long?>,
+    private val relationCondition: (Projection<C>) -> Condition,
     private val orderBy: (Projection<C>) -> List<SortField<*>>,
     private val defaultLimit: Int = 20,
     private val maxLimit: Int = 100,
@@ -339,7 +342,7 @@ class ManyRelation<C : Any>(
 
         val query = DSL.select(compiled.fields).from(child.table)
             .where(compiled.condition)
-            .and(childForeignKey(child).eq(parentKey))
+            .and(relationCondition(child))
             .orderBy(sorting).limit(limit).offset(offset)
 
         return DSL.multiset(query).convertFrom { rows -> rows.map(compiled::wrap) }
