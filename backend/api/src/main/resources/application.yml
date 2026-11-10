@@ -1,0 +1,27 @@
+quarkus:
+  http:
+    auth:
+      proactive: true
+  hibernate-orm:
+    database:
+      generation: validate
+    physical-naming-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+  liquibase:
+    change-log: db/changelog/db.changelog-master.yaml
+    migrate-at-start: true
+  oidc:
+    application-type: web-app
+    roles:
+      role-claim-path: realm_access/roles
+    token:
+      refresh-expired: true
+    logout:
+      path: /auth/logout
+      post-logout-path: /
+      clear-site-data: cache,cookies
+  datasource:
+    db-kind: postgresql
+    username: ${DB_USER:dirtydocs}
+    password: ${DB_PASSWORD:dirtydocs}
+    jdbc:
+      url: ${DB_URL:jdbc:postgresql://localhost:5432/dirtydocs}
