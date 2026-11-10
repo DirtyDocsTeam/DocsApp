@@ -68,3 +68,44 @@ kotlin {
         javaParameters = true
     }
 }
+
+jooq {
+    version.set("3.20.5")
+
+    configurations {
+        create("main") {
+            generateSchemaSourceOnCompilation.set(false)
+
+            jooqConfiguration.apply {
+                jdbc.apply {
+                    driver = "org.postgresql.Driver"
+
+                    url = System.getenv("DB_URL")
+                        ?: "jdbc:postgresql://localhost:5432/dirtydocs"
+
+                    user = System.getenv("DB_USER")
+                        ?: "postgres"
+
+                    password = System.getenv("DB_PASSWORD")
+                        ?: "postgres"
+                }
+
+                generator.apply {
+                    name = "org.jooq.codegen.KotlinGenerator"
+
+                    database.apply {
+                        name = "org.jooq.meta.postgres.PostgresDatabase"
+                        inputSchema = "public"
+                        includes = ".*"
+                        excludes = "databasechangelog|databasechangeloglock"
+                    }
+
+                    target.apply {
+                        packageName = "ru.novari.spectra.generated.jooq"
+                        directory = "build/generated-src/jooq/main"
+                    }
+                }
+            }
+        }
+    }
+}
