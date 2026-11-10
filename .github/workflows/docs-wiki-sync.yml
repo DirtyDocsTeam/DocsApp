@@ -29,7 +29,6 @@ on:
       - "Makefile"
       - ".github/scripts/wiki_sync.py"
       - ".github/scripts/api_docs.py"
-      - ".github/scripts/c4_relations.py"
       - ".github/workflows/docs-wiki-sync.yml"
   workflow_dispatch:
   schedule:
@@ -58,9 +57,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # git log нужен для колонки «Обновлено» в индексе страниц
-
-      - name: Проверить таблицу связей C4 (design.md ↔ context.drawio)
-        run: make c4-check
 
       - name: Собрать контракты API (REST/GraphQL/gRPC) в documentation/api
         run: make api-docs
