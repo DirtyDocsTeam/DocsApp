@@ -92,6 +92,8 @@ SECURITY_ANNOTATIONS = {
     "RolesAllowed": "роли",
 }
 
+GQL_FRAMEWORK_TYPES = {"DataFetchingEnvironment", "DataFetchingFieldSelectionSet", "SelectionSet"}
+
 GQL_SCALARS = {
     "String", "Int", "Long", "Short", "Byte", "Char", "Float", "Double", "Boolean", "ID",
     "BigDecimal", "BigInteger", "Date", "DateTime", "LocalDate", "LocalDateTime", "OffsetDateTime",
@@ -463,8 +465,15 @@ PROP_RE = re.compile(r"\b(?:val|var)\s+([A-Za-z_]\w*)\s*:")
 
 
 def find_body(masked: str, pos: int) -> tuple[int, int]:
-    """Границы тела класса после его заголовка; (-1, -1), если тела нет."""
+    """Границы тела класса после его заголовка; (-1, -1), если тела нет.
+
+    Заголовок может быть многострочным и содержать параметры конструктора
+    (`class Query(private val dsl: DSLContext, ...) {`), поэтому «новая декларация
+    началась» проверяется только по символам вне скобок: иначе `val` из параметров
+    обрывает поиск тела и класс теряет все методы.
+    """
     depth = 0
+    head: list[str] = []
     limit = min(len(masked), pos + 4000)
     i = pos
     while i < limit:
@@ -478,23 +487,29 @@ def find_body(masked: str, pos: int) -> tuple[int, int]:
         elif ch == ">" and depth > 0:
             depth -= 1
         elif ch == "{" and depth == 0:
-            if re.search(r"\b(?:fun|val|var|class|interface|object)\b", masked[pos:i]):
+            if re.search(r"\b(?:fun|val|var|class|interface|object)\b", "".join(head)):
                 return -1, -1
             return i, match_forward(masked, i, "{", "}")
         elif ch == "{":
             depth += 1
         elif ch == "}":
             depth = max(0, depth - 1)
+        elif depth == 0:
+            head.append(ch)
         i += 1
     return -1, -1
 
 
 def top_level_index(masked: str, char: str, start: int = 0, end: int | None = None) -> int:
+    """Индекс `char` на нулевой глубине вложенности. Искомый символ проверяется до учёта
+    глубины, иначе поиск `{` (или `)`) не находит сам себя."""
     end = len(masked) if end is None else end
     round_ = square = curly = angle = 0
     i = start
     while i < end:
         ch = masked[i]
+        if ch == char and not (round_ or square or curly or angle):
+            return i
         if ch == "(":
             round_ += 1
         elif ch == ")":
@@ -511,8 +526,6 @@ def top_level_index(masked: str, char: str, start: int = 0, end: int | None = No
             angle += 1
         elif ch == ">" and angle > 0:
             angle -= 1
-        elif ch == char and not (round_ or square or curly or angle):
-            return i
         i += 1
     return -1
 
@@ -893,7 +906,9 @@ def collect_graphql(sources: list[SourceFile]) -> tuple[list[GqlField], list[Gql
                 all_types.setdefault(decl.name, GqlType(
                     name=decl.name, kind=kind, line=decl.line,
                     description=decl.doc or ann_map(decl.annotations).get("Description", ""),
-                    fields=[p for p in (decl.params + decl.properties) if p.name],
+                    # у enum в схему идут значения, а свойства конструктора (`dbValue`) — нет
+                    fields=[] if kind == "enum"
+                    else [p for p in (decl.params + decl.properties) if p.name],
                     values=decl.enum_values,
                 ))
             for method in decl.methods:
@@ -911,7 +926,8 @@ def collect_graphql(sources: list[SourceFile]) -> tuple[list[GqlField], list[Gql
                     returns=method.returns or "String",
                     line=method.line,
                     file=source.rel,
-                    args=method.params,
+                    args=[param for param in method.params
+                          if param.type.strip("?") not in GQL_FRAMEWORK_TYPES],
                     description=own.get("Description") or method.doc,
                 ))
 
@@ -1967,8 +1983,10 @@ def render_graphql(surfaces: list[Surface], meta: dict) -> str:
                       "_Только те, на которые ссылаются запросы и мутации._", ""]
             lines += table(["Тип", "Вид", "Содержимое", "Описание"],
                            [[code(gql_type.name), gql_type.kind,
-                             amounts(len(gql_type.fields) or len(gql_type.values),
-                                     "поле", "поля", "полей"), gql_type.description]
+                             amounts(len(gql_type.values), "значение", "значения", "значений")
+                             if gql_type.kind == "enum"
+                             else amounts(len(gql_type.fields), "поле", "поля", "полей"),
+                             gql_type.description]
                             for gql_type in surface.gql_types])
             for gql_type in surface.gql_types:
                 lines += render_gql_type(gql_type)
