@@ -20,6 +20,8 @@
 from __future__ import annotations
 
 import argparse
+import html
+import math
 import re
 import subprocess
 import sys
@@ -34,6 +36,7 @@ CHANGELOG_DIR = "backend/api/src/main/resources/db/changelog"
 MASTER = CHANGELOG_DIR + "/db.changelog-master.yaml"
 DB_SQL = "documentation/design/db.sql"
 ERD_MD = "documentation/design/erd.md"
+ERD_SVG = "documentation/design/schema.svg"
 
 POSTGRES_IMAGE = "postgres:16-alpine"
 PG_CONTAINER = "docsapp-dbcheck"
@@ -388,6 +391,200 @@ def build_erd(tables: list[Table]) -> str:
                              relations=render_relations(tables))
 
 
+# ─────────────────────────── SVG ERD ───────────────────────────
+
+CARD_HEADER_HEIGHT = 34
+CARD_ROW_HEIGHT = 26
+CARD_GUTTER = 56
+LAYOUT_PADDING = 40
+
+
+@dataclass(frozen=True)
+class Rect:
+    x: float
+    y: float
+    width: float
+    height: float
+
+    @property
+    def center(self) -> tuple[float, float]:
+        return self.x + self.width / 2, self.y + self.height / 2
+
+
+@dataclass(frozen=True)
+class PositionedTable:
+    table: Table
+    rect: Rect
+
+
+@dataclass(frozen=True)
+class LayoutScore:
+    table_intersections: int
+    line_intersections: int
+    nearest_gap: float
+    farthest_gap: float
+
+    @property
+    def total(self) -> float:
+        return (5 * self.table_intersections + self.line_intersections +
+                .1 * self.nearest_gap + .01 * self.farthest_gap)
+
+
+def card_size(table: Table) -> tuple[float, float]:
+    """Estimate monospace card geometry without requiring installed fonts."""
+    longest = max([len(table.name)] + [len(column.name) + len(column.type) + 6
+                                       for column in table.columns])
+    return max(180, 38 + longest * 7), CARD_HEADER_HEIGHT + len(table.columns) * CARD_ROW_HEIGHT
+
+
+def rectangle_gap(first: Rect, second: Rect) -> float:
+    horizontal = max(first.x - (second.x + second.width), second.x - (first.x + first.width), 0)
+    vertical = max(first.y - (second.y + second.height), second.y - (first.y + first.height), 0)
+    return math.hypot(horizontal, vertical)
+
+
+def overlaps(first: Rect, second: Rect) -> bool:
+    return (first.x < second.x + second.width and first.x + first.width > second.x and
+            first.y < second.y + second.height and first.y + first.height > second.y)
+
+
+def connection_points(first: Rect, second: Rect) -> tuple[tuple[float, float], tuple[float, float]]:
+    """Attach an FK line to the nearest opposing card edges."""
+    first_x, first_y = first.center
+    second_x, second_y = second.center
+    if abs(second_x - first_x) >= abs(second_y - first_y):
+        return ((first.x + (first.width if second_x >= first_x else 0), first_y),
+                (second.x + (0 if second_x >= first_x else second.width), second_y))
+    return ((first_x, first.y + (first.height if second_y >= first_y else 0)),
+            (second_x, second.y + (0 if second_y >= first_y else second.height)))
+
+
+def orientation(first: tuple[float, float], second: tuple[float, float], third: tuple[float, float]) -> float:
+    return ((second[0] - first[0]) * (third[1] - first[1]) -
+            (second[1] - first[1]) * (third[0] - first[0]))
+
+
+def segments_intersect(first_start: tuple[float, float], first_end: tuple[float, float],
+                       second_start: tuple[float, float], second_end: tuple[float, float]) -> bool:
+    """Strict segment crossing; shared endpoints do not count as an intersection."""
+    return ((orientation(first_start, first_end, second_start) * orientation(first_start, first_end, second_end) < 0) and
+            (orientation(second_start, second_end, first_start) * orientation(second_start, second_end, first_end) < 0))
+
+
+def segment_crosses_rect(start: tuple[float, float], end: tuple[float, float], rect: Rect) -> bool:
+    edges = [((rect.x, rect.y), (rect.x + rect.width, rect.y)),
+             ((rect.x + rect.width, rect.y), (rect.x + rect.width, rect.y + rect.height)),
+             ((rect.x + rect.width, rect.y + rect.height), (rect.x, rect.y + rect.height)),
+             ((rect.x, rect.y + rect.height), (rect.x, rect.y))]
+    return any(segments_intersect(start, end, edge_start, edge_end) for edge_start, edge_end in edges)
+
+
+def table_edges(tables: list[Table]) -> list[tuple[str, str]]:
+    known = {table.name for table in tables}
+    return [(table.name, column.reference[0]) for table in tables for column in table.columns
+            if column.reference and column.reference[0] in known and column.reference[0] != table.name]
+
+
+def score_layout(positioned: list[PositionedTable]) -> LayoutScore:
+    by_name = {item.table.name: item for item in positioned}
+    edges = table_edges([item.table for item in positioned])
+    segments = [(source, target, *connection_points(by_name[source].rect, by_name[target].rect))
+                for source, target in edges]
+    card_hits = sum(segment_crosses_rect(start, end, item.rect)
+                    for source, target, start, end in segments for item in positioned
+                    if item.table.name not in {source, target})
+    line_hits = sum(segments_intersect(first[2], first[3], second[2], second[3])
+                    for index, first in enumerate(segments) for second in segments[index + 1:]
+                    if not ({first[0], first[1]} & {second[0], second[1]}))
+    gaps = [rectangle_gap(first.rect, second.rect) for index, first in enumerate(positioned)
+            for second in positioned[index + 1:]]
+    return LayoutScore(card_hits, line_hits, min(gaps, default=0), max(gaps, default=0))
+
+
+def layout_tables(tables: list[Table]) -> list[PositionedTable]:
+    """Deterministic grid start plus bounded local improvement for the ERD score."""
+    degrees = {table.name: 0 for table in tables}
+    for source, target in table_edges(tables):
+        degrees[source] += 1
+        degrees[target] += 1
+    ordered = sorted(tables, key=lambda table: (-degrees[table.name], table.name))
+    widths = [card_size(table)[0] for table in ordered]
+    heights = [card_size(table)[1] for table in ordered]
+    pitch_x = max(widths, default=180) + CARD_GUTTER
+    pitch_y = max(heights, default=60) + CARD_GUTTER
+    columns = max(2, math.ceil(math.sqrt(len(ordered))))
+    positioned = [PositionedTable(table, Rect((index % columns) * pitch_x,
+                                               (index // columns) * pitch_y,
+                                               *card_size(table)))
+                  for index, table in enumerate(ordered)]
+    directions = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1))
+    for step in (pitch_x / 2, pitch_y / 2, min(pitch_x, pitch_y) / 4):
+        for index, item in enumerate(positioned):
+            current_score = score_layout(positioned).total
+            best = item
+            for dx, dy in directions:
+                candidate = PositionedTable(item.table, Rect(item.rect.x + dx * step,
+                                                               item.rect.y + dy * step,
+                                                               item.rect.width, item.rect.height))
+                trial = positioned[:]
+                trial[index] = candidate
+                if any(overlaps(candidate.rect, other.rect) for other_index, other in enumerate(trial)
+                       if other_index != index):
+                    continue
+                candidate_score = score_layout(trial).total
+                if candidate_score < current_score:
+                    current_score, best = candidate_score, candidate
+            positioned[index] = best
+    return positioned
+
+
+def svg_escape(value: str) -> str:
+    return html.escape(value, quote=True)
+
+
+def render_svg(tables: list[Table]) -> str:
+    if not tables:
+        raise ValueError("ERD не содержит таблиц для SVG-рендера")
+    positioned = layout_tables(tables)
+    by_name = {item.table.name: item for item in positioned}
+    min_x = min(item.rect.x for item in positioned) - LAYOUT_PADDING
+    min_y = min(item.rect.y for item in positioned) - LAYOUT_PADDING
+    max_x = max(item.rect.x + item.rect.width for item in positioned) + LAYOUT_PADDING
+    max_y = max(item.rect.y + item.rect.height for item in positioned) + LAYOUT_PADDING
+    lines = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="%g %g %g %g" font-family="ui-sans-serif, system-ui, sans-serif">' %
+             (max_x - min_x, max_y - min_y, min_x, min_y, max_x - min_x, max_y - min_y),
+             '<rect x="%g" y="%g" width="%g" height="%g" fill="#0e1116"/>' %
+             (min_x, min_y, max_x - min_x, max_y - min_y)]
+    for source, target in table_edges(tables):
+        start, end = connection_points(by_name[source].rect, by_name[target].rect)
+        control = (end[0] - start[0]) * .4 if abs(end[0] - start[0]) >= abs(end[1] - start[1]) else 0
+        lines.append('<path d="M %g %g C %g %g, %g %g, %g %g" fill="none" stroke="#5d6b7d" stroke-width="1.5"/>' %
+                     (start[0], start[1], start[0] + control, start[1], end[0] - control, end[1], end[0], end[1]))
+    for item in positioned:
+        table, rect = item.table, item.rect
+        lines.append('<g transform="translate(%g %g)"><rect width="%g" height="%g" rx="10" fill="#1b212b" stroke="#2b333f"/>' %
+                     (rect.x, rect.y, rect.width, rect.height))
+        lines.append('<path d="M0 %d V10 a10 10 0 0 1 10 -10 H%g a10 10 0 0 1 10 10 V%d Z" fill="#222c3a"/>' %
+                     (CARD_HEADER_HEIGHT, rect.width - 10, CARD_HEADER_HEIGHT))
+        lines.append('<text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">%s</text>' % svg_escape(table.name))
+        for index, column in enumerate(table.columns):
+            y = CARD_HEADER_HEIGHT + index * CARD_ROW_HEIGHT
+            if index % 2:
+                lines.append('<rect x="1" y="%d" width="%g" height="%d" fill="#1e2530"/>' %
+                             (y, rect.width - 2, CARD_ROW_HEIGHT))
+            marker = "PK" if column.primary else "FK" if column.reference else ""
+            color = "#f5c451" if column.primary else "#5aa7ff"
+            if marker:
+                lines.append('<text x="10" y="%g" dominant-baseline="middle" font-size="9" font-weight="700" fill="%s">%s</text>' %
+                             (y + 13, color, marker))
+            lines.append('<text x="38" y="%g" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">%s</text>' %
+                         (y + 13, svg_escape(column.name)))
+            lines.append('<text x="%g" y="%g" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">%s</text>' %
+                         (rect.width - 12, y + 13, svg_escape(column.type)))
+        lines.append('</g>')
+    return "\n".join(lines + ['</svg>', ''])
+
+
 # ─────────────────────────── проверка DDL ───────────────────────────
 
 def verify(sql_path: Path, dry_run: bool) -> int:
@@ -446,13 +643,15 @@ def verify(sql_path: Path, dry_run: bool) -> int:
 # ─────────────────────────── CLI ───────────────────────────
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="DDL и ERD (Mermaid) из Liquibase-чанжлога")
+    parser = argparse.ArgumentParser(description="DDL, Mermaid и SVG ERD из Liquibase-чанжлога")
     parser.add_argument("--root", default=".", help="корень репозитория")
     parser.add_argument("--check", action="store_true",
                         help="не писать файлы, а проверить их соответствие чанжлогу")
     parser.add_argument("--verify", action="store_true",
                         help="прогнать db.sql на чистой PostgreSQL в docker")
     parser.add_argument("--mermaid", action="store_true", help="только напечатать erDiagram")
+    parser.add_argument("--render", action="store_true",
+                        help="совместимый алиас локальной генерации SVG")
     parser.add_argument("--print-command", action="store_true",
                         help="показать команду проверки, ничего не запуская")
     args = parser.parse_args(argv)
@@ -471,6 +670,7 @@ def main(argv: list[str] | None = None) -> int:
     artifacts = {
         root / DB_SQL: build_sql(root, sql, files),
         root / ERD_MD: build_erd(tables),
+        root / ERD_SVG: render_svg(tables),
     }
 
     relations = sum(1 for table in tables for column in table.columns if column.reference)
@@ -483,7 +683,7 @@ def main(argv: list[str] | None = None) -> int:
                 path.relative_to(root).as_posix() for path in stale))
             print("Пересоберите: make db-schema")
             return 1
-        print("db.sql и erd.md соответствуют чанжлогу: %d таблиц, %d %s" % (
+        print("db.sql, erd.md и schema.svg соответствуют чанжлогу: %d таблиц, %d %s" % (
             len(tables), relations, "внешний ключ" if relations == 1 else "внешних ключей"))
         return 0
 
