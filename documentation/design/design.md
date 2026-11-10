@@ -78,7 +78,12 @@ C4-диаграмма — источник правды; ниже — где о�
 
 ## Модель данных
 
-![ERD](schema.svg)
+![ERD: 12 таблиц PostgreSQL](schema.png)
+
+Схема живёт в Liquibase-чанжлоге `backend/api/src/main/resources/db/changelog/`: из него собирается
+[`db.sql`](db.sql) (`make db-schema`) и он же — источник ERD выше (`make db-erd`, рендер через
+[sqltoerdiagram.com](https://sqltoerdiagram.com)). Оба артефакта производные: правки вносим в чанжлог,
+`make db-check` в CI ловит расхождение.
 
 ## Открытые вопросы
 

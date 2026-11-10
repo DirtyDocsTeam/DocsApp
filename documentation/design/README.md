@@ -10,8 +10,8 @@
 | [`design.md`](design.md) | основная страница раздела: расшифровка C4, таблица отклонений артефактов от неё, модель данных, дефекты черновика DDL и открытые вопросы |
 | [`context.drawio`](context.drawio) | **C4-диаграмма контекста — источник правды** по архитектуре: участники, контейнеры, протоколы (редактируется в diagrams.net / draw.io) |
 | [`context.jpg`](context.jpg) | экспорт диаграммы для быстрого просмотра |
-| [`schema.svg`](schema.svg), [`schema.png`](schema.png) | ERD: 12 таблиц PostgreSQL |
-| [`db.sql`](db.sql) | черновик DDL под ERD: проектный референс, **не** миграция |
+| [`schema.png`](schema.png) | ERD: 12 таблиц PostgreSQL; собирается из чанжлога (`make db-erd`) |
+| [`db.sql`](db.sql) | DDL, собранный из Liquibase-чанжлога (`make db-schema`); не правится руками |
 
 ## Как читать
 
