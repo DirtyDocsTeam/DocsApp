@@ -20,15 +20,15 @@ class JobQuery(
     private val dsl: DSLContext,
 ) {
     @Query
-    @Description("List my jobs")
+    @Description("List current user jobs")
     fun myJobs(env: DataFetchingEnvironment, limit: Int = 10, offset: Int = 0): List<JobRequest> {
         val context = contexts.get()
         val projection = REQUEST.select(env, context)
         return projection.fetchPage(dsl, orderBy = listOf(JOB_REQUEST.CREATED_AT.desc(), JOB_REQUEST.ID.desc()), limit = limit, offset = offset)
     }
     @Query
-    @Description("List my results")
-    fun myResults(env: DataFetchingEnvironment, limit: Int = 10, offset: Int = 0): List<JobResult> {
+    @Description("List current user results")
+    fun userResults(env: DataFetchingEnvironment, limit: Int = 10, offset: Int = 0): List<JobResult> {
         val context = contexts.get()
         val projection = RESULT.select(env, context)
         return projection.fetchPage(dsl, orderBy = listOf(JOB_RESULT.COMPLETED_AT.desc(), JOB_RESULT.ID.desc()), limit = limit, offset = offset)

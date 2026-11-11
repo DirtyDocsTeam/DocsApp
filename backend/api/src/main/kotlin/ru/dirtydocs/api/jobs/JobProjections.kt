@@ -82,6 +82,13 @@ object JobProjections {
                 childProvider = { ThemeProjections.THEME },
                 parentForeignKey = table.fieldOf(JOB_REQUEST.THEME_ID),
             ),
+            "results" to ManyRelation(
+                childProvider = { RESULT },
+                relationCondition = { JOB_RESULT.REQUEST_ID.eq(JOB_REQUEST.ID) },
+                orderBy = {
+                    listOf(JOB_RESULT.ID.desc())
+                },
+            )
         )
         if (depth < maxNestedRequestDepth) {
             val nestedTable = requestTables[depth + 1]
