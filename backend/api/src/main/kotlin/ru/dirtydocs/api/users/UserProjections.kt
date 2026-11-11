@@ -8,8 +8,8 @@ import ru.dirtydocs.data.ManyRelation
 import ru.dirtydocs.data.Projection
 import ru.dirtydocs.data.columnNodes
 import ru.dirtydocs.data.jsonb
-import ru.dirtydocs.spectra.generated.jooq.tables.references.API_TOKENS
-import ru.dirtydocs.spectra.generated.jooq.tables.references.USERS
+import ru.dirtydocs.api.generated.jooq.tables.references.API_TOKENS
+import ru.dirtydocs.api.generated.jooq.tables.references.USERS
 import kotlin.collections.plus
 
 object UserProjections {
