@@ -1,20 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="2142" height="1000" viewBox="-40 -316.25 2142 1000.25" font-family="ui-sans-serif, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="2053" height="1088" viewBox="-40 -404.5 2053.75 1088.5" font-family="ui-sans-serif, system-ui, sans-serif">
 <defs><marker id="many-right" markerWidth="12" markerHeight="12" refX="8" refY="6" orient="0" overflow="visible"><path d="M0 6 L8 1 M0 6 L8 6 M0 6 L8 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker><marker id="many-left" markerWidth="12" markerHeight="12" refX="0" refY="6" orient="0" overflow="visible"><path d="M8 6 L0 1 M8 6 L0 6 M8 6 L0 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker><marker id="zero-many-right" markerWidth="18" markerHeight="12" refX="10" refY="6" orient="0" overflow="visible"><circle cx="5" cy="6" r="2.5" fill="#0e1116" stroke="#5d6b7d" stroke-width="1.5"/><path d="M8 6 L15 1 M8 6 L15 6 M8 6 L15 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker><marker id="zero-many-left" markerWidth="18" markerHeight="12" refX="0" refY="6" orient="0" overflow="visible"><circle cx="10" cy="6" r="2.5" fill="#0e1116" stroke="#5d6b7d" stroke-width="1.5"/><path d="M7 6 L0 1 M7 6 L0 6 M7 6 L0 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker></defs>
-<rect x="-40" y="-316.25" width="2142" height="1000.25" fill="#0e1116"/>
 <path d="M 199 73 C 247 73, 305 47, 353 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"/>
 <path d="M 280.25 246.5 C 328.25 246.5, 305 47, 353 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"/>
 <path d="M 706 386.75 C 658 386.75, 656 47, 608 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"/>
 <path d="M 280.25 272.5 C 328.25 272.5, 305 423, 353 423" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"/>
-<path d="M 353 125 C 257 125, 257 423, 353 423" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"/>
+<path d="M 353 125 C 257 125, 690 423, 594 423" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"/>
 <path d="M 706 412.75 C 658 412.75, 642 423, 594 423" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"/>
 <path d="M 1314 423 C 1362 423, 1364 423, 1412 423" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"/>
 <path d="M 1500.25 272.5 C 1404.25 272.5, 1316 423, 1412 423" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"/>
 <path d="M 608 281 C 715.85 281, 1039.4 135.25, 1147.25 135.25" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"/>
 <path d="M 1059 -103.5 C 963 -103.5, 1051.25 135.25, 1147.25 135.25" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"/>
 <path d="M 1059 449 C 963 449, 1051.25 135.25, 1147.25 135.25" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"/>
-<path d="M 940 -203.25 C 1105 -203.25, 1600 -129.5, 1765 -129.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"/>
-<path d="M 608 255 C 839.4 255, 1533.6 -129.5, 1765 -129.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"/>
-<path d="M 1755.25 246.5 C 1803.25 246.5, 1717 -129.5, 1765 -129.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"/>
+<path d="M 940 -291.5 C 1087.35 -291.5, 1529.4 -129.5, 1676.75 -129.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"/>
+<path d="M 608 255 C 821.75 255, 1463 -129.5, 1676.75 -129.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"/>
+<path d="M 1500.25 246.5 C 1404.25 246.5, 1580.75 -129.5, 1676.75 -129.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"/>
 <g transform="translate(0 0)"><rect width="199" height="138" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H189 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">job_events</text>
@@ -67,7 +66,7 @@
 <text x="38" y="307" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">parameters</text>
 <text x="243" y="307" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">jsonb</text>
 </g>
-<g transform="translate(706 -276.25)"><rect width="234" height="190" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<g transform="translate(706 -364.5)"><rect width="234" height="190" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H224 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">api_tokens</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
@@ -126,7 +125,7 @@
 <text x="38" y="177" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">updated_at</text>
 <text x="215" y="177" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
 </g>
-<g transform="translate(1765 -176.5)"><rect width="297" height="242" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<g transform="translate(1676.75 -176.5)"><rect width="297" height="242" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H287 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">users</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>

@@ -47,6 +47,10 @@ class SvgErdLayoutTest(unittest.TestCase):
         self.assertTrue(db_schema.segments_intersect((0, 0), (4, 4), (0, 4), (4, 0)))
         self.assertFalse(db_schema.segments_intersect((0, 0), (4, 0), (4, 0), (4, 4)))
 
+    def test_line_clearance_expands_the_collision_area(self) -> None:
+        rect = db_schema.Rect(10, 10, 20, 20)
+        self.assertTrue(db_schema.segment_crosses_rect((-10, 5), (50, 5), db_schema.expanded_rect(rect)))
+
     def test_preoptimization_places_leaf_tables_before_their_hubs(self) -> None:
         hub = db_schema.Table("hub", [db_schema.Column("id", "bigint", primary=True)])
         left = db_schema.Table("left", [db_schema.Column("hub_id", "bigint", reference=("hub", "id"))])
@@ -103,7 +107,7 @@ class SvgErdLayoutTest(unittest.TestCase):
         table = db_schema.Table("table<&", [db_schema.Column("column<&", "text")])
         svg = db_schema.render_svg([table])
         self.assertIn("table&lt;&amp;", svg)
-        self.assertIn('#0e1116', svg)
+        self.assertNotIn('<rect x="-40" y="-40" width=', svg)
         self.assertIn('#222c3a', svg)
 
 

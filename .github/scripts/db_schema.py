@@ -37,6 +37,7 @@ MASTER = CHANGELOG_DIR + "/db.changelog-master.yaml"
 DB_SQL = "documentation/design/db.sql"
 ERD_MD = "documentation/design/erd.md"
 ERD_SVG = "documentation/design/schema.svg"
+LAYOUT_YAML = "documentation/design/layout.yaml"
 
 POSTGRES_IMAGE = "postgres:16-alpine"
 PG_CONTAINER = "docsapp-dbcheck"
@@ -391,6 +392,26 @@ def build_erd(tables: list[Table]) -> str:
                              relations=render_relations(tables))
 
 
+def load_fixed_positions(root: Path, tables: list[Table]) -> dict[str, tuple[float, float]]:
+    path = root / LAYOUT_YAML
+    if not path.is_file():
+        return {}
+    document = YamlSubset(path.read_text(encoding="utf-8"), LAYOUT_YAML).parse()
+    positions = document.get("positions", {})
+    if not isinstance(positions, dict):
+        raise SystemExit("%s: ожидался словарь positions" % LAYOUT_YAML)
+    known = {table.name for table in tables}
+    unknown = sorted(set(positions) - known)
+    if unknown:
+        raise SystemExit("%s: неизвестные таблицы: %s" % (LAYOUT_YAML, ", ".join(unknown)))
+    result = {}
+    for name, value in positions.items():
+        if not isinstance(value, dict) or not isinstance(value.get("x"), (int, float)) or not isinstance(value.get("y"), (int, float)):
+            raise SystemExit("%s: %s требует числовые x и y" % (LAYOUT_YAML, name))
+        result[name] = float(value["x"]), float(value["y"])
+    return result
+
+
 # ─────────────────────────── SVG ERD ───────────────────────────
 
 CARD_HEADER_HEIGHT = 34
@@ -398,6 +419,7 @@ CARD_ROW_HEIGHT = 26
 CARD_GUTTER = 56
 LAYOUT_PADDING = 40
 MIN_CARD_GAP = 48
+LINE_BLOCK_CLEARANCE = 12
 CONNECTOR_CONTROL_OFFSET = 48
 VERTICAL_CONNECTOR_CONTROL_OFFSET = 96
 
@@ -557,6 +579,11 @@ def segment_crosses_rect(start: tuple[float, float], end: tuple[float, float], r
     return any(segments_intersect(start, end, edge_start, edge_end) for edge_start, edge_end in edges)
 
 
+def expanded_rect(rect: Rect, padding: float = LINE_BLOCK_CLEARANCE) -> Rect:
+    """Reserve visual breathing room between a connector and an unrelated card."""
+    return Rect(rect.x - padding, rect.y - padding, rect.width + 2 * padding, rect.height + 2 * padding)
+
+
 def route_segments(route: RelationshipRoute) -> list[tuple[tuple[float, float], tuple[float, float]]]:
     """Approximate the rendered cubic Bézier with four collision segments."""
     points = []
@@ -571,7 +598,8 @@ def route_segments(route: RelationshipRoute) -> list[tuple[tuple[float, float], 
 
 
 def route_crosses_rect(route: RelationshipRoute, rect: Rect) -> bool:
-    return any(segment_crosses_rect(start, end, rect) for start, end in route_segments(route))
+    clearance_rect = expanded_rect(rect)
+    return any(segment_crosses_rect(start, end, clearance_rect) for start, end in route_segments(route))
 
 
 def routes_intersect(first: RelationshipRoute, second: RelationshipRoute) -> bool:
@@ -619,7 +647,8 @@ def preoptimized_order(tables: list[Table], seed: str | None = None) -> list[Tab
     return [by_name[name] for name in placed]
 
 
-def layout_variant(tables: list[Table], seed: str | None = None) -> list[PositionedTable]:
+def layout_variant(tables: list[Table], seed: str | None = None,
+                   fixed_positions: dict[str, tuple[float, float]] | None = None) -> list[PositionedTable]:
     """Deterministic grid start plus bounded local improvement for the ERD score."""
     degrees = {table.name: 0 for table in tables}
     for relationship in relationships(tables):
@@ -631,14 +660,15 @@ def layout_variant(tables: list[Table], seed: str | None = None) -> list[Positio
     pitch_x = max(widths, default=180) + CARD_GUTTER
     pitch_y = max(heights, default=60) + CARD_GUTTER
     columns = max(3, math.ceil(math.sqrt(len(ordered))) + 2)
-    positioned = [PositionedTable(table, Rect((index % columns) * pitch_x,
-                                               (index // columns) * pitch_y,
+    fixed_positions = fixed_positions or {}
+    positioned = [PositionedTable(table, Rect(*fixed_positions.get(table.name, ((index % columns) * pitch_x,
+                                                                                 (index // columns) * pitch_y)),
                                                *card_size(table)))
                   for index, table in enumerate(ordered)]
     directions = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1))
     for step in (pitch_x / 2, pitch_y / 2, min(pitch_x, pitch_y) / 4):
         for index, item in enumerate(positioned):
-            if index < 2:
+            if index < 2 or item.table.name in fixed_positions:
                 continue
             current_layout_score = score_layout(positioned)
             current_score = current_layout_score.total
@@ -666,7 +696,7 @@ def layout_variant(tables: list[Table], seed: str | None = None) -> list[Positio
         baseline = score_layout(positioned)
         improved = False
         for index, item in enumerate(positioned):
-            if index < 2:
+            if index < 2 or item.table.name in fixed_positions:
                 continue
             for dx, dy in directions:
                 candidate = PositionedTable(item.table, Rect(item.rect.x + dx * pitch_x / 2,
@@ -690,14 +720,14 @@ def layout_variant(tables: list[Table], seed: str | None = None) -> list[Positio
     return positioned
 
 
-def layout_tables(tables: list[Table]) -> list[PositionedTable]:
+def layout_tables(tables: list[Table], fixed_positions: dict[str, tuple[float, float]] | None = None) -> list[PositionedTable]:
     """Pick the best deterministic leaf-seeded layout while retaining a stable output."""
     degrees = {table.name: 0 for table in tables}
     for relationship in relationships(tables):
         degrees[relationship.child] += 1
         degrees[relationship.parent] += 1
     seeds = sorted(name for name, degree in degrees.items() if degree == 1) or [None]
-    variants = [layout_variant(tables, seed) for seed in seeds]
+    variants = [layout_variant(tables, seed, fixed_positions) for seed in seeds]
     return min(variants, key=lambda variant: (score_layout(variant).total,
                                                tuple(item.table.name for item in variant)))
 
@@ -706,10 +736,10 @@ def svg_escape(value: str) -> str:
     return html.escape(value, quote=True)
 
 
-def render_svg(tables: list[Table]) -> str:
+def render_svg(tables: list[Table], fixed_positions: dict[str, tuple[float, float]] | None = None) -> str:
     if not tables:
         raise ValueError("ERD не содержит таблиц для SVG-рендера")
-    positioned = layout_tables(tables)
+    positioned = layout_tables(tables, fixed_positions)
     by_name = {item.table.name: item for item in positioned}
     min_x = min(item.rect.x for item in positioned) - LAYOUT_PADDING
     min_y = min(item.rect.y for item in positioned) - LAYOUT_PADDING
@@ -718,8 +748,7 @@ def render_svg(tables: list[Table]) -> str:
     lines = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="%g %g %g %g" font-family="ui-sans-serif, system-ui, sans-serif">' %
              (max_x - min_x, max_y - min_y, min_x, min_y, max_x - min_x, max_y - min_y),
              '<defs><marker id="many-right" markerWidth="12" markerHeight="12" refX="8" refY="6" orient="0" overflow="visible"><path d="M0 6 L8 1 M0 6 L8 6 M0 6 L8 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker><marker id="many-left" markerWidth="12" markerHeight="12" refX="0" refY="6" orient="0" overflow="visible"><path d="M8 6 L0 1 M8 6 L0 6 M8 6 L0 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker><marker id="zero-many-right" markerWidth="18" markerHeight="12" refX="10" refY="6" orient="0" overflow="visible"><circle cx="5" cy="6" r="2.5" fill="#0e1116" stroke="#5d6b7d" stroke-width="1.5"/><path d="M8 6 L15 1 M8 6 L15 6 M8 6 L15 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker><marker id="zero-many-left" markerWidth="18" markerHeight="12" refX="0" refY="6" orient="0" overflow="visible"><circle cx="10" cy="6" r="2.5" fill="#0e1116" stroke="#5d6b7d" stroke-width="1.5"/><path d="M7 6 L0 1 M7 6 L0 6 M7 6 L0 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker></defs>',
-             '<rect x="%g" y="%g" width="%g" height="%g" fill="#0e1116"/>' %
-             (min_x, min_y, max_x - min_x, max_y - min_y)]
+             ]
     for route in relationship_routes(positioned):
         relationship = route.relationship
         marker = ("zero-many" if relationship.nullable else "many") + ("-left" if route.child_side > 0 else "-right")
@@ -828,6 +857,7 @@ def main(argv: list[str] | None = None) -> int:
         print("⚠ %s" % warning, file=sys.stderr)
 
     tables = parse_ddl(sql)
+    fixed_positions = load_fixed_positions(root, tables)
 
     if args.mermaid:
         print(render_mermaid(tables))
@@ -836,7 +866,7 @@ def main(argv: list[str] | None = None) -> int:
     artifacts = {
         root / DB_SQL: build_sql(root, sql, files),
         root / ERD_MD: build_erd(tables),
-        root / ERD_SVG: render_svg(tables),
+        root / ERD_SVG: render_svg(tables, fixed_positions),
     }
 
     relations = sum(1 for table in tables for column in table.columns if column.reference)
