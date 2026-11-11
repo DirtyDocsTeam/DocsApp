@@ -1969,6 +1969,14 @@ def render_graphql(surfaces: list[Surface], meta: dict) -> str:
         if not surface.gql_fields:
             lines += ["Полей `@Query`/`@Mutation` в исходниках нет.", ""]
             continue
+        conflicts = {}
+        for field in surface.gql_fields:
+            conflicts.setdefault(field.name, set()).add(field.returns)
+        for name, returns in sorted(conflicts.items()):
+            if len(returns) > 1:
+                lines += ["> ⚠ Поле `%s` объявлено с несовместимыми типами результата: %s." %
+                          (name, ", ".join(sorted(returns))), ""]
+        type_map = {item.name: item for item in surface.gql_types}
         for kind, label, hint in (
             ("query", "Запросы", "Читают данные и ничего не меняют."),
             ("mutation", "Мутации", "Меняют состояние."),
@@ -1982,7 +1990,7 @@ def render_graphql(surfaces: list[Surface], meta: dict) -> str:
                            [[code(field.name), gql_args(field), code(field.returns),
                              field.description] for field in chunk])
             for field in chunk:
-                lines += render_gql_field(field, meta)
+                lines += render_gql_field(field, meta, type_map)
         if surface.gql_types:
             lines += ["### Типы", "",
                       "_Только те, на которые ссылаются запросы и мутации._", ""]
@@ -2009,7 +2017,20 @@ def gql_args(field: GqlField) -> str:
                      + (" = %s" % arg.default if arg.default else "") for arg in field.args)
 
 
-def render_gql_field(field: GqlField, meta: dict) -> list[str]:
+def gql_example_value(type_name: str) -> str:
+    return "true" if "Boolean" in type_name else "42" if any(token in type_name for token in ("Int", "Long", "ID")) else '"example"'
+
+
+def gql_selection(type_name: str, type_map: dict[str, GqlType]) -> list[str]:
+    target = next((name for name in type_names(type_name) if name in type_map), "")
+    if not target:
+        return ["__typename"]
+    scalar = [field.name for field in type_map[target].fields
+              if not any(name in type_map for name in type_names(field.type))]
+    return scalar[:5] or ["__typename"]
+
+
+def render_gql_field(field: GqlField, meta: dict, type_map: dict[str, GqlType]) -> list[str]:
     lines = ["#### `%s(%s): %s`" % (field.name, gql_args(field) if field.args else "",
                                     field.returns), ""]
     if field.description:
@@ -2019,6 +2040,18 @@ def render_gql_field(field: GqlField, meta: dict) -> list[str]:
                        [[code(arg.name), code(arg.type),
                          code(arg.default) if arg.default else "—", arg.description]
                         for arg in field.args])
+    variables = ", ".join("$%s: %s" % (arg.name, arg.type) for arg in field.args)
+    operation = "mutation" if field.kind == "mutation" else "subscription" if field.kind == "subscription" else "query"
+    arguments = ", ".join("%s: $%s" % (arg.name, arg.name) for arg in field.args)
+    selection = gql_selection(field.returns, type_map)
+    lines += ["**Пример запроса:**", "", "```graphql",
+              "%s %s%s {" % (operation, field.name[:1].upper() + field.name[1:],
+                               "(" + variables + ")" if variables else ""),
+              "  %s%s {" % (field.name, "(" + arguments + ")" if arguments else ""),
+              *("    " + item for item in selection), "  }", "}", "```", ""]
+    if field.args:
+        lines += ["```json", "{", *("  \"%s\": %s%s" % (arg.name, gql_example_value(arg.type),
+                  "," if index < len(field.args) - 1 else "") for index, arg in enumerate(field.args)), "}", "```", ""]
     if field.file:
         name = field.file.rsplit("/", 1)[-1]
         label = "%s:%d" % (name, field.line) if field.line else name
