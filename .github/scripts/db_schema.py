@@ -241,12 +241,16 @@ class Column:
     nullable: bool = True
     primary: bool = False
     reference: tuple[str, str] | None = None   # (таблица, колонка)
+    indexed: bool = False
+    unique: bool = False
+    trigger: bool = False
 
 
 @dataclass
 class Table:
     name: str
     columns: list[Column] = field(default_factory=list)
+    annotations: list[str] = field(default_factory=list)
 
     def column(self, name: str) -> Column | None:
         return next((column for column in self.columns if column.name == name), None)
@@ -320,9 +324,31 @@ def parse_ddl(sql: str) -> list[Table]:
             column = table.column(key)
             if column is not None:
                 column.primary = True
+        if len(table_keys) > 1:
+            table.annotations.append("PK " + ", ".join(table_keys))
         if table.columns:
             tables.append(table)
     tables.sort(key=lambda item: item.name)
+    by_name = {table.name: table for table in tables}
+    for unique, name, table, columns in re.findall(r"create\s+(unique\s+)?index\s+(\w+)\s+on\s+(?:\w+\.)?(\w+)\s*\(([^)]*)\)", sql, re.I):
+        if table in by_name:
+            column_names = [part.strip().strip('"') for part in columns.split(',')]
+            if len(column_names) == 1 and (column := by_name[table].column(column_names[0])) is not None:
+                column.indexed = True
+                column.unique = bool(unique)
+            else:
+                by_name[table].annotations.append(("UQ " if unique else "IDX ") + ", ".join(column_names))
+    trigger_columns = {}
+    for function, body in re.findall(r"create\s+(?:or\s+replace\s+)?function\s+(?:\w+\.)?(\w+)\s*\([^)]*\).*?\$\$(.*?)\$\$", sql, re.I | re.S):
+        trigger_columns[function] = set(re.findall(r"\bnew\.(\w+)", body, re.I))
+    for name, table, function in re.findall(r"create\s+trigger\s+(\w+).*?\bon\s+(?:\w+\.)?(\w+).*?execute\s+function\s+(?:\w+\.)?(\w+)", sql, re.I | re.S):
+        if table in by_name:
+            targets = trigger_columns.get(function, set())
+            columns = [by_name[table].column(target) for target in targets]
+            if len(columns) == 1 and columns[0] is not None:
+                columns[0].trigger = True
+            else:
+                by_name[table].annotations.append("TRG " + name)
     return tables
 
 
@@ -481,7 +507,7 @@ def card_size(table: Table) -> tuple[float, float]:
     """Estimate monospace card geometry without requiring installed fonts."""
     longest = max([len(table.name)] + [len(column.name) + len(column.type) + 6
                                        for column in table.columns])
-    return max(180, 38 + longest * 7), CARD_HEADER_HEIGHT + len(table.columns) * CARD_ROW_HEIGHT
+    return max(180, 38 + longest * 7), CARD_HEADER_HEIGHT + (len(table.columns) + len(table.annotations)) * CARD_ROW_HEIGHT
 
 
 def rectangle_gap(first: Rect, second: Rect) -> float:
@@ -772,10 +798,24 @@ def render_svg(tables: list[Table], fixed_positions: dict[str, tuple[float, floa
             if marker:
                 lines.append('<text x="10" y="%g" dominant-baseline="middle" font-size="9" font-weight="700" fill="%s">%s</text>' %
                              (y + 13, color, marker))
-            lines.append('<text x="38" y="%g" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">%s</text>' %
+            for x, label, color, enabled in ((25, "UQ", "#b48cff", column.unique),
+                                              (39, "IX", "#7eb68a", column.indexed),
+                                              (53, "TRG", "#d98cff", column.trigger)):
+                if enabled:
+                    lines.append('<text x="%g" y="%g" dominant-baseline="middle" font-size="8" font-weight="700" fill="%s">%s</text>' %
+                                 (x, y + 13, color, label))
+            lines.append('<text x="70" y="%g" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">%s</text>' %
                          (y + 13, svg_escape(column.name)))
             lines.append('<text x="%g" y="%g" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">%s</text>' %
                          (rect.width - 12, y + 13, svg_escape(column.type)))
+        for offset, annotation in enumerate(table.annotations):
+            y = CARD_HEADER_HEIGHT + (len(table.columns) + offset) * CARD_ROW_HEIGHT
+            kind, name = annotation.split(" ", 1)
+            color = "#d98cff" if kind == "TRG" else "#b48cff"
+            lines.append('<text x="25" y="%g" dominant-baseline="middle" font-size="8" font-weight="700" fill="%s">%s</text>' %
+                         (y + 13, color, kind))
+            lines.append('<text x="50" y="%g" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">%s</text>' %
+                         (y + 13, svg_escape(name)))
         lines.append('</g>')
     return "\n".join(lines + ['</svg>', ''])
 
