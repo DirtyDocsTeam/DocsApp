@@ -422,6 +422,8 @@ class Param:
     location: str = ""
     description: str = ""
     annotations: list[str] = field(default_factory=list)
+    is_property: bool = False
+    is_private: bool = False
 
 
 @dataclass
@@ -557,6 +559,8 @@ def parse_params(masked: str, text: str, annotations: list[Annotation],
         colon = top_level_index(clean, ":")
         equals = top_level_index(clean, "=")
         param = Param(annotations=ann_names(own))
+        param.is_property = bool(re.search(r"\b(?:val|var)\b", clean))
+        param.is_private = bool(re.search(r"\bprivate\b", clean))
         if colon >= 0 and (equals < 0 or colon < equals):
             param.name = last_ident(clean[:colon])
             type_end = equals if equals > colon else len(clean)
@@ -900,7 +904,7 @@ def collect_graphql(sources: list[SourceFile]) -> tuple[list[GqlField], list[Gql
                 kind = "enum"
             elif decl.kind == "interface":
                 kind = "interface"
-            elif decl.params or decl.properties:
+            elif any(param.is_property and not param.is_private for param in decl.params) or decl.properties:
                 kind = "type"
             if kind:
                 all_types.setdefault(decl.name, GqlType(
@@ -908,7 +912,8 @@ def collect_graphql(sources: list[SourceFile]) -> tuple[list[GqlField], list[Gql
                     description=decl.doc or ann_map(decl.annotations).get("Description", ""),
                     # у enum в схему идут значения, а свойства конструктора (`dbValue`) — нет
                     fields=[] if kind == "enum"
-                    else [p for p in (decl.params + decl.properties) if p.name],
+                    else [p for p in decl.params if p.name and p.is_property and not p.is_private] +
+                    [p for p in decl.properties if p.name],
                     values=decl.enum_values,
                 ))
             for method in decl.methods:
