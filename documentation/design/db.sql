@@ -63,14 +63,14 @@ CREATE TABLE public.media(
   mime_type text NOT NULL,
   storage_path text NOT NULL,
   file_hash varchar(128) NOT NULL,
-  public_path text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE public.job_media (
   request_id bigint NOT NULL REFERENCES public.job_request(id),
-  media_id bigint NOT NULL REFERENCES public.media(id)
+  media_id bigint NOT NULL REFERENCES public.media(id),
+  public_path text NOT NULL,
   PRIMARY KEY (request_id, media_id)
 );
 
@@ -85,7 +85,9 @@ CREATE TABLE public.job_request (
   status varchar(32) NOT NULL, -- queued, processing, parsing, rendering, building, validationg, completed, completed_with_warnings, failed, validation_failed
   user_id bigint NOT NULL REFERENCES public.users(id),
   theme_id bigint NOT NULL REFERENCES public.themes(id),
-  parameters jsonb NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(preferences) = 'object')
+  parameters jsonb NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(preferences) = 'object'),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE public.job_result (
@@ -101,7 +103,8 @@ CREATE TABLE public.job_events (
   user_id bigint NOT NULL REFERENCES public.users(id),
   job_id bigint NOT NULL REFERENCES public.job_request(id),
   action varchar(32) NOT NULL, -- create_job, job_completed, job_failed, issue_download_url
-  data jsonb NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(preferences) = 'object')
+  data jsonb NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(preferences) = 'object'),
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
 
@@ -113,6 +116,7 @@ RETURN NEW;
 END;
 $$;
 CREATE TRIGGER users_set_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+CREATE TRIGGER job_request_set_updated_at BEFORE UPDATE ON public.job_request FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 CREATE TRIGGER theme_collections_set_updated_at BEFORE UPDATE ON public.theme_collections FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 CREATE TRIGGER themes_set_updated_at BEFORE UPDATE ON public.themes FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 CREATE TRIGGER media_set_updated_at BEFORE UPDATE ON public.media FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
