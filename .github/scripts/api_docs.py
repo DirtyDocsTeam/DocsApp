@@ -100,6 +100,7 @@ GQL_SCALARS = {
     "Instant", "ZonedDateTime", "Duration", "UUID", "URI", "URL", "Json", "JSON", "Object", "Number",
     "Time", "Timestamp", "Decimal",
 }
+GQL_EXAMPLE_MAX_DEPTH = 5
 
 MODIFIERS = {
     "public", "private", "protected", "internal", "static", "final", "abstract", "open", "override",
@@ -2021,31 +2022,25 @@ def gql_example_value(type_name: str) -> str:
     return "true" if "Boolean" in type_name else "42" if any(token in type_name for token in ("Int", "Long", "ID")) else '"example"'
 
 
-def gql_selection(type_name: str, type_map: dict[str, GqlType]) -> list[str]:
+def gql_selection(type_name: str, type_map: dict[str, GqlType], depth: int = GQL_EXAMPLE_MAX_DEPTH) -> list[str]:
     target = next((name for name in type_names(type_name) if name in type_map), "")
     if not target:
-        return ["__typename"]
-    selection = []
-    fields = type_map[target].fields
-    scalar_fields = [field for field in fields
-                     if not any(name in type_map and type_map[name].kind != "enum"
-                                for name in type_names(field.type))][:4]
-    nested_fields = [field for field in fields
-                     if any(name in type_map and type_map[name].kind != "enum"
-                            for name in type_names(field.type))][:2]
-    for field in scalar_fields + nested_fields:
-        nested = next((name for name in type_names(field.type)
-                       if name in type_map and type_map[name].kind != "enum"), "")
-        if not nested:
-            selection.append(field.name)
-            continue
-        nested_scalars = [item.name for item in type_map[nested].fields
-                          if not any(name in type_map for name in type_names(item.type))]
-        if nested_scalars:
-            selection += [field.name + " {", *("  " + item for item in nested_scalars[:4]), "}"]
-        else:
-            selection.append(field.name + " { __typename }")
-    return selection or ["__typename"]
+        return []
+
+    def select(name: str, remaining: int) -> list[str]:
+        lines = []
+        for field in type_map[name].fields:
+            nested = next((item for item in type_names(field.type)
+                           if item in type_map and type_map[item].kind != "enum"), "")
+            if not nested:
+                lines.append(field.name)
+            elif remaining > 0:
+                nested_lines = select(nested, remaining - 1)
+                if nested_lines:
+                    lines += [field.name + " {", *("  " + item for item in nested_lines), "}"]
+        return lines
+
+    return select(target, depth)
 
 
 def render_gql_field(field: GqlField, meta: dict, type_map: dict[str, GqlType]) -> list[str]:
@@ -2061,7 +2056,7 @@ def render_gql_field(field: GqlField, meta: dict, type_map: dict[str, GqlType]) 
     variables = ", ".join("$%s: %s" % (arg.name, arg.type) for arg in field.args)
     operation = "mutation" if field.kind == "mutation" else "subscription" if field.kind == "subscription" else "query"
     arguments = ", ".join("%s: $%s" % (arg.name, arg.name) for arg in field.args)
-    selection = gql_selection(field.returns, type_map)
+    selection = gql_selection(field.returns, type_map) or ["__typename"]
     lines += ["**Пример запроса:**", "", "```graphql",
               "%s %s%s {" % (operation, field.name[:1].upper() + field.name[1:],
                                "(" + variables + ")" if variables else ""),
