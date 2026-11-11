@@ -2025,9 +2025,27 @@ def gql_selection(type_name: str, type_map: dict[str, GqlType]) -> list[str]:
     target = next((name for name in type_names(type_name) if name in type_map), "")
     if not target:
         return ["__typename"]
-    scalar = [field.name for field in type_map[target].fields
-              if not any(name in type_map for name in type_names(field.type))]
-    return scalar[:5] or ["__typename"]
+    selection = []
+    fields = type_map[target].fields
+    scalar_fields = [field for field in fields
+                     if not any(name in type_map and type_map[name].kind != "enum"
+                                for name in type_names(field.type))][:4]
+    nested_fields = [field for field in fields
+                     if any(name in type_map and type_map[name].kind != "enum"
+                            for name in type_names(field.type))][:2]
+    for field in scalar_fields + nested_fields:
+        nested = next((name for name in type_names(field.type)
+                       if name in type_map and type_map[name].kind != "enum"), "")
+        if not nested:
+            selection.append(field.name)
+            continue
+        nested_scalars = [item.name for item in type_map[nested].fields
+                          if not any(name in type_map for name in type_names(item.type))]
+        if nested_scalars:
+            selection += [field.name + " {", *("  " + item for item in nested_scalars[:4]), "}"]
+        else:
+            selection.append(field.name + " { __typename }")
+    return selection or ["__typename"]
 
 
 def render_gql_field(field: GqlField, meta: dict, type_map: dict[str, GqlType]) -> list[str]:
