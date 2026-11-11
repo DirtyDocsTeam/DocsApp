@@ -12,11 +12,11 @@ import ru.dirtydocs.data.Projection
 import ru.dirtydocs.data.ProjectionContext
 import ru.dirtydocs.data.columnNodes
 import ru.dirtydocs.data.jsonb
-import ru.dirtydocs.spectra.generated.jooq.tables.references.STYLES
-import ru.dirtydocs.spectra.generated.jooq.tables.references.THEMES
-import ru.dirtydocs.spectra.generated.jooq.tables.references.THEME_COLLECTIONS
-import ru.dirtydocs.spectra.generated.jooq.tables.references.THEME_COLLECTION_THEMES
-import ru.dirtydocs.spectra.generated.jooq.tables.references.USER_THEME_COLLECTIONS
+import ru.dirtydocs.api.generated.jooq.tables.references.STYLES
+import ru.dirtydocs.api.generated.jooq.tables.references.THEMES
+import ru.dirtydocs.api.generated.jooq.tables.references.THEME_COLLECTIONS
+import ru.dirtydocs.api.generated.jooq.tables.references.THEME_COLLECTION_THEMES
+import ru.dirtydocs.api.generated.jooq.tables.references.USER_THEME_COLLECTIONS
 
 object ThemeProjections {
     private val json = Json {
