@@ -58,9 +58,10 @@ ERD_HEADER = """# ERD: модель данных
 `{changelog}/`: из него собираются и [`db.sql`](db.sql), и диаграмма ниже
 (`make db-schema`, `make db-erd`). Руками файл не правим — меняем чанжлог.
 
-```mermaid
-{diagram}
-```
+![ERD: модель данных](schema.svg)
+
+Текстовый Mermaid-вариант доступен через `python3 .github/scripts/db_schema.py --mermaid`;
+в опубликованной документации используется локально сгенерированный SVG.
 
 ## Связи
 
