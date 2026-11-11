@@ -60,7 +60,10 @@ jobs:
         with:
           fetch-depth: 0 # git log нужен для колонки «Обновлено» в индексе страниц
 
-      - name: Проверить, что db.sql соответствует Liquibase-чанжлогу
+      - name: Пересобрать SVG ERD из Liquibase-чанжлога
+        run: make db-erd
+
+      - name: Проверить, что артефакты схемы соответствуют Liquibase-чанжлогу
         run: make db-check
 
       - name: Собрать контракты API (REST/GraphQL/gRPC) в documentation/api
