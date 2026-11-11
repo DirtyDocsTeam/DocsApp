@@ -51,7 +51,8 @@ make api-docs-check    # проверить, что страницы контр�
 
 - `design/` — диаграммы и схема БД. Источник правды по архитектуре — C4-контекст
   (`design/context.drawio`); схема — Liquibase-чанжлог `backend/api/src/main/resources/db/changelog`.
-  Из чанжлога собираются `design/db.sql` (`make db-schema`) и ERD на Mermaid `design/erd.md` (`make db-erd`) —
+  Из чанжлога собираются `design/db.sql` (`make db-schema`), SVG ERD `design/schema.svg` и текстовый Mermaid
+  `design/erd.md` (`make db-erd`) —
   руками эти файлы не правятся. Открытые расхождения и дефекты DDL перечислены
   в [`design/design.md`](design/design.md).
 - `api/` — генерируется, в репозитории не хранится: `make api-docs` собирает контракты из кода

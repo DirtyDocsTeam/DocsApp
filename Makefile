@@ -5,7 +5,7 @@
 #   make api-docs-check — проверить, что страницы контрактов соответствуют коду
 #   make db-schema      — пересобрать documentation/design/db.sql из Liquibase-чанжлога
 #   make db-check       — проверить, что db.sql соответствует чанжлогу
-#   make db-erd         — пересобрать ERD на Mermaid (documentation/design/erd.md)
+#   make db-erd         — пересобрать ERD (SVG + Mermaid) из Liquibase-чанжлога
 #   make db-verify      — прогнать db.sql на чистой PostgreSQL в docker
 #   make docs-preview   — собрать вики локально в /tmp/wiki-dry, ничего не публикуя
 #
@@ -35,7 +35,7 @@ db-schema: ## Пересобрать documentation/design/db.sql из Liquibase-
 db-check: ## Проверить, что db.sql соответствует чанжлогу
 	$(PYTHON) $(DB_SCHEMA) --check
 
-db-erd: ## Пересобрать ERD на Mermaid (documentation/design/erd.md)
+db-erd: ## Пересобрать ERD: SVG и Mermaid из Liquibase-чанжлога
 	$(PYTHON) $(DB_SCHEMA) --render
 
 db-verify: ## Прогнать db.sql на чистой PostgreSQL в docker
