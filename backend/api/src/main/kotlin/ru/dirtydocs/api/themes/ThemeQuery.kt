@@ -9,7 +9,7 @@ import org.jooq.DSLContext
 import org.jooq.SortField
 import ru.dirtydocs.api.themes.ThemeProjections.THEME
 import ru.dirtydocs.data.ProjectionContext
-import ru.dirtydocs.spectra.generated.jooq.tables.references.THEMES
+import ru.dirtydocs.api.generated.jooq.tables.references.THEMES
 
 @GraphQLApi
 class ThemeQuery(
