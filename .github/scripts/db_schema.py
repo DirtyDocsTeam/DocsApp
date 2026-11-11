@@ -397,6 +397,9 @@ CARD_HEADER_HEIGHT = 34
 CARD_ROW_HEIGHT = 26
 CARD_GUTTER = 56
 LAYOUT_PADDING = 40
+MIN_CARD_GAP = 48
+CONNECTOR_CONTROL_OFFSET = 48
+VERTICAL_CONNECTOR_CONTROL_OFFSET = 96
 
 
 @dataclass(frozen=True)
@@ -421,13 +424,35 @@ class PositionedTable:
 class LayoutScore:
     table_intersections: int
     line_intersections: int
+    straight_connections: int
     nearest_gap: float
-    farthest_gap: float
+    average_gap: float
 
     @property
     def total(self) -> float:
-        return (5 * self.table_intersections + self.line_intersections +
-                .1 * self.nearest_gap + .01 * self.farthest_gap)
+        return (10 * self.table_intersections + 2 * self.line_intersections +
+                .1 * self.nearest_gap + .01 * self.average_gap -
+                1 * self.straight_connections)
+
+
+@dataclass(frozen=True)
+class Relationship:
+    child: str
+    column: str
+    parent: str
+    parent_column: str
+    nullable: bool
+
+
+@dataclass(frozen=True)
+class RelationshipRoute:
+    relationship: Relationship
+    start: tuple[float, float]
+    start_control: tuple[float, float]
+    end_control: tuple[float, float]
+    end: tuple[float, float]
+    child_side: int
+    parent_side: int
 
 
 def card_size(table: Table) -> tuple[float, float]:
@@ -448,15 +473,68 @@ def overlaps(first: Rect, second: Rect) -> bool:
             first.y < second.y + second.height and first.y + first.height > second.y)
 
 
-def connection_points(first: Rect, second: Rect) -> tuple[tuple[float, float], tuple[float, float]]:
-    """Attach an FK line to the nearest opposing card edges."""
-    first_x, first_y = first.center
-    second_x, second_y = second.center
-    if abs(second_x - first_x) >= abs(second_y - first_y):
-        return ((first.x + (first.width if second_x >= first_x else 0), first_y),
-                (second.x + (0 if second_x >= first_x else second.width), second_y))
-    return ((first_x, first.y + (first.height if second_y >= first_y else 0)),
-            (second_x, second.y + (0 if second_y >= first_y else second.height)))
+def violates_card_gap(first: Rect, second: Rect) -> bool:
+    return overlaps(first, second) or rectangle_gap(first, second) < MIN_CARD_GAP
+
+
+def relationships(tables: list[Table]) -> list[Relationship]:
+    known = {table.name for table in tables}
+    return [Relationship(table.name, column.name, column.reference[0], column.reference[1], column.nullable)
+            for table in tables for column in table.columns
+            if column.reference and column.reference[0] in known and column.reference[0] != table.name]
+
+
+def relationship_route(relationship: Relationship, positioned: dict[str, PositionedTable],
+                       child_side: int, parent_side: int) -> RelationshipRoute:
+    """Attach a relationship to its child FK row and referenced parent-key row."""
+    child = positioned[relationship.child]
+    parent = positioned[relationship.parent]
+    child_index = next(index for index, column in enumerate(child.table.columns)
+                       if column.name == relationship.column)
+    parent_index = next((index for index, column in enumerate(parent.table.columns)
+                         if column.name == relationship.parent_column), 0)
+    child_y = child.rect.y + CARD_HEADER_HEIGHT + child_index * CARD_ROW_HEIGHT + CARD_ROW_HEIGHT / 2
+    parent_y = parent.rect.y + CARD_HEADER_HEIGHT + parent_index * CARD_ROW_HEIGHT + CARD_ROW_HEIGHT / 2
+    start = (child.rect.x + (child.rect.width if child_side > 0 else 0), child_y)
+    end = (parent.rect.x + (parent.rect.width if parent_side > 0 else 0), parent_y)
+    vertically_aligned = not (child.rect.x + child.rect.width <= parent.rect.x or
+                              parent.rect.x + parent.rect.width <= child.rect.x)
+    if vertically_aligned:
+        start_control = (start[0] + child_side * VERTICAL_CONNECTOR_CONTROL_OFFSET, start[1])
+        end_control = (end[0] + parent_side * VERTICAL_CONNECTOR_CONTROL_OFFSET, end[1])
+    else:
+        midpoint = (start[0] + end[0]) / 2
+        start_control = (start[0] + math.copysign(max(CONNECTOR_CONTROL_OFFSET, abs(midpoint - start[0]) * .4), midpoint - start[0]), start[1])
+        end_control = (end[0] + math.copysign(max(CONNECTOR_CONTROL_OFFSET, abs(midpoint - end[0]) * .4), midpoint - end[0]), end[1])
+    return RelationshipRoute(relationship, start, start_control, end_control, end, child_side, parent_side)
+
+
+def relationship_routes(positioned: list[PositionedTable]) -> list[RelationshipRoute]:
+    by_name = {item.table.name: item for item in positioned}
+    routes = []
+    for relationship in sorted(relationships([item.table for item in positioned]),
+                               key=lambda item: (item.parent, item.child, item.column)):
+        child_rect = by_name[relationship.child].rect
+        parent_rect = by_name[relationship.parent].rect
+        if child_rect.x + child_rect.width <= parent_rect.x:
+            sides = [(1, -1)]
+        elif parent_rect.x + parent_rect.width <= child_rect.x:
+            sides = [(-1, 1)]
+        else:
+            sides = [(child_side, parent_side) for child_side in (-1, 1) for parent_side in (-1, 1)]
+        candidates = [relationship_route(relationship, by_name, child_side, parent_side)
+                      for child_side, parent_side in sides]
+        def cost(route: RelationshipRoute) -> tuple[int, int, float]:
+            blocked = sum(route_crosses_rect(route, item.rect) for item in positioned
+                          if item.table.name not in {relationship.child, relationship.parent})
+            crossings = sum(routes_intersect(route, selected)
+                            for selected in routes
+                            if not ({relationship.child, relationship.parent} &
+                                    {selected.relationship.child, selected.relationship.parent}))
+            force = abs(route.start_control[0] - route.start[0]) + abs(route.end_control[0] - route.end[0])
+            return blocked, crossings, force
+        routes.append(min(candidates, key=cost))
+    return routes
 
 
 def orientation(first: tuple[float, float], second: tuple[float, float], third: tuple[float, float]) -> float:
@@ -479,40 +557,80 @@ def segment_crosses_rect(start: tuple[float, float], end: tuple[float, float], r
     return any(segments_intersect(start, end, edge_start, edge_end) for edge_start, edge_end in edges)
 
 
-def table_edges(tables: list[Table]) -> list[tuple[str, str]]:
-    known = {table.name for table in tables}
-    return [(table.name, column.reference[0]) for table in tables for column in table.columns
-            if column.reference and column.reference[0] in known and column.reference[0] != table.name]
+def route_segments(route: RelationshipRoute) -> list[tuple[tuple[float, float], tuple[float, float]]]:
+    """Approximate the rendered cubic Bézier with four collision segments."""
+    points = []
+    for index in range(5):
+        t = index / 4
+        inverse = 1 - t
+        points.append((inverse ** 3 * route.start[0] + 3 * inverse ** 2 * t * route.start_control[0] +
+                       3 * inverse * t ** 2 * route.end_control[0] + t ** 3 * route.end[0],
+                       inverse ** 3 * route.start[1] + 3 * inverse ** 2 * t * route.start_control[1] +
+                       3 * inverse * t ** 2 * route.end_control[1] + t ** 3 * route.end[1]))
+    return list(zip(points, points[1:]))
+
+
+def route_crosses_rect(route: RelationshipRoute, rect: Rect) -> bool:
+    return any(segment_crosses_rect(start, end, rect) for start, end in route_segments(route))
+
+
+def routes_intersect(first: RelationshipRoute, second: RelationshipRoute) -> bool:
+    return any(segments_intersect(start, end, other_start, other_end)
+               for start, end in route_segments(first)
+               for other_start, other_end in route_segments(second))
 
 
 def score_layout(positioned: list[PositionedTable]) -> LayoutScore:
-    by_name = {item.table.name: item for item in positioned}
-    edges = table_edges([item.table for item in positioned])
-    segments = [(source, target, *connection_points(by_name[source].rect, by_name[target].rect))
-                for source, target in edges]
-    card_hits = sum(segment_crosses_rect(start, end, item.rect)
-                    for source, target, start, end in segments for item in positioned
-                    if item.table.name not in {source, target})
-    line_hits = sum(segments_intersect(first[2], first[3], second[2], second[3])
-                    for index, first in enumerate(segments) for second in segments[index + 1:]
-                    if not ({first[0], first[1]} & {second[0], second[1]}))
+    routes = relationship_routes(positioned)
+    card_hits = sum(route_crosses_rect(route, item.rect)
+                    for route in routes for item in positioned
+                    if item.table.name not in {route.relationship.child, route.relationship.parent})
+    line_hits = sum(routes_intersect(first, second)
+                    for index, first in enumerate(routes) for second in routes[index + 1:]
+                    if not ({first.relationship.child, first.relationship.parent} &
+                            {second.relationship.child, second.relationship.parent}))
+    straight_connections = sum(abs(route.start[1] - route.end[1]) < .001 for route in routes)
     gaps = [rectangle_gap(first.rect, second.rect) for index, first in enumerate(positioned)
             for second in positioned[index + 1:]]
-    return LayoutScore(card_hits, line_hits, min(gaps, default=0), max(gaps, default=0))
+    return LayoutScore(card_hits, line_hits, straight_connections, min(gaps, default=0),
+                       sum(gaps) / len(gaps) if gaps else 0)
 
 
-def layout_tables(tables: list[Table]) -> list[PositionedTable]:
+def preoptimized_order(tables: list[Table], seed: str | None = None) -> list[Table]:
+    """Seed layout from leaf tables, then grow through already placed neighbours."""
+    by_name = {table.name: table for table in tables}
+    neighbours = {table.name: set() for table in tables}
+    for relationship in relationships(tables):
+        neighbours[relationship.child].add(relationship.parent)
+        neighbours[relationship.parent].add(relationship.child)
+    leaves = sorted((name for name, linked in neighbours.items() if len(linked) == 1))
+    if seed is not None:
+        placed = [seed]
+        placed.extend(sorted(neighbours[seed])[:1])
+        placed.extend(name for name in leaves if name not in placed)
+    else:
+        placed = list(leaves)
+    remaining = set(by_name) - set(placed)
+    while remaining:
+        next_name = min(remaining, key=lambda name: (
+            -len(neighbours[name] & set(placed)), len(neighbours[name]), name))
+        placed.append(next_name)
+        remaining.remove(next_name)
+    return [by_name[name] for name in placed]
+
+
+def layout_variant(tables: list[Table], seed: str | None = None) -> list[PositionedTable]:
     """Deterministic grid start plus bounded local improvement for the ERD score."""
     degrees = {table.name: 0 for table in tables}
-    for source, target in table_edges(tables):
-        degrees[source] += 1
-        degrees[target] += 1
-    ordered = sorted(tables, key=lambda table: (-degrees[table.name], table.name))
+    for relationship in relationships(tables):
+        degrees[relationship.child] += 1
+        degrees[relationship.parent] += 1
+    ordered = preoptimized_order(tables, seed)
     widths = [card_size(table)[0] for table in ordered]
     heights = [card_size(table)[1] for table in ordered]
     pitch_x = max(widths, default=180) + CARD_GUTTER
     pitch_y = max(heights, default=60) + CARD_GUTTER
-    columns = max(2, math.ceil(math.sqrt(len(ordered))))
+    columns = max(3, math.ceil(math.sqrt(len(ordered))) + 2)
     positioned = [PositionedTable(table, Rect((index % columns) * pitch_x,
                                                (index // columns) * pitch_y,
                                                *card_size(table)))
@@ -520,7 +638,10 @@ def layout_tables(tables: list[Table]) -> list[PositionedTable]:
     directions = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1))
     for step in (pitch_x / 2, pitch_y / 2, min(pitch_x, pitch_y) / 4):
         for index, item in enumerate(positioned):
-            current_score = score_layout(positioned).total
+            if index < 2:
+                continue
+            current_layout_score = score_layout(positioned)
+            current_score = current_layout_score.total
             best = item
             for dx, dy in directions:
                 candidate = PositionedTable(item.table, Rect(item.rect.x + dx * step,
@@ -528,14 +649,57 @@ def layout_tables(tables: list[Table]) -> list[PositionedTable]:
                                                                item.rect.width, item.rect.height))
                 trial = positioned[:]
                 trial[index] = candidate
-                if any(overlaps(candidate.rect, other.rect) for other_index, other in enumerate(trial)
+                if any(violates_card_gap(candidate.rect, other.rect) for other_index, other in enumerate(trial)
                        if other_index != index):
                     continue
-                candidate_score = score_layout(trial).total
+                candidate_layout_score = score_layout(trial)
+                if (current_layout_score.table_intersections == 0 and
+                        candidate_layout_score.table_intersections > 0):
+                    continue
+                candidate_score = candidate_layout_score.total
                 if candidate_score < current_score:
                     current_score, best = candidate_score, candidate
             positioned[index] = best
+    # A relationship through an unrelated table makes the diagram unreadable. Give those
+    # high-cost cases extra deterministic escape attempts after compacting the layout.
+    for _ in range(len(positioned) * 2):
+        baseline = score_layout(positioned)
+        improved = False
+        for index, item in enumerate(positioned):
+            if index < 2:
+                continue
+            for dx, dy in directions:
+                candidate = PositionedTable(item.table, Rect(item.rect.x + dx * pitch_x / 2,
+                                                               item.rect.y + dy * pitch_y / 2,
+                                                               item.rect.width, item.rect.height))
+                trial = positioned[:]
+                trial[index] = candidate
+                if any(violates_card_gap(candidate.rect, other.rect) for other_index, other in enumerate(trial)
+                       if other_index != index):
+                    continue
+                candidate_score = score_layout(trial)
+                if ((candidate_score.table_intersections, candidate_score.total) <
+                        (baseline.table_intersections, baseline.total)):
+                    positioned = trial
+                    improved = True
+                    break
+            if improved:
+                break
+        if not improved:
+            break
     return positioned
+
+
+def layout_tables(tables: list[Table]) -> list[PositionedTable]:
+    """Pick the best deterministic leaf-seeded layout while retaining a stable output."""
+    degrees = {table.name: 0 for table in tables}
+    for relationship in relationships(tables):
+        degrees[relationship.child] += 1
+        degrees[relationship.parent] += 1
+    seeds = sorted(name for name, degree in degrees.items() if degree == 1) or [None]
+    variants = [layout_variant(tables, seed) for seed in seeds]
+    return min(variants, key=lambda variant: (score_layout(variant).total,
+                                               tuple(item.table.name for item in variant)))
 
 
 def svg_escape(value: str) -> str:
@@ -553,13 +717,15 @@ def render_svg(tables: list[Table]) -> str:
     max_y = max(item.rect.y + item.rect.height for item in positioned) + LAYOUT_PADDING
     lines = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="%g %g %g %g" font-family="ui-sans-serif, system-ui, sans-serif">' %
              (max_x - min_x, max_y - min_y, min_x, min_y, max_x - min_x, max_y - min_y),
+             '<defs><marker id="many-right" markerWidth="12" markerHeight="12" refX="8" refY="6" orient="0" overflow="visible"><path d="M0 6 L8 1 M0 6 L8 6 M0 6 L8 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker><marker id="many-left" markerWidth="12" markerHeight="12" refX="0" refY="6" orient="0" overflow="visible"><path d="M8 6 L0 1 M8 6 L0 6 M8 6 L0 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker><marker id="zero-many-right" markerWidth="18" markerHeight="12" refX="10" refY="6" orient="0" overflow="visible"><circle cx="5" cy="6" r="2.5" fill="#0e1116" stroke="#5d6b7d" stroke-width="1.5"/><path d="M8 6 L15 1 M8 6 L15 6 M8 6 L15 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker><marker id="zero-many-left" markerWidth="18" markerHeight="12" refX="0" refY="6" orient="0" overflow="visible"><circle cx="10" cy="6" r="2.5" fill="#0e1116" stroke="#5d6b7d" stroke-width="1.5"/><path d="M7 6 L0 1 M7 6 L0 6 M7 6 L0 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker></defs>',
              '<rect x="%g" y="%g" width="%g" height="%g" fill="#0e1116"/>' %
              (min_x, min_y, max_x - min_x, max_y - min_y)]
-    for source, target in table_edges(tables):
-        start, end = connection_points(by_name[source].rect, by_name[target].rect)
-        control = (end[0] - start[0]) * .4 if abs(end[0] - start[0]) >= abs(end[1] - start[1]) else 0
-        lines.append('<path d="M %g %g C %g %g, %g %g, %g %g" fill="none" stroke="#5d6b7d" stroke-width="1.5"/>' %
-                     (start[0], start[1], start[0] + control, start[1], end[0] - control, end[1], end[0], end[1]))
+    for route in relationship_routes(positioned):
+        relationship = route.relationship
+        marker = ("zero-many" if relationship.nullable else "many") + ("-left" if route.child_side > 0 else "-right")
+        lines.append('<path d="M %g %g C %g %g, %g %g, %g %g" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#%s)"/>' %
+                     (route.start[0], route.start[1], route.start_control[0], route.start_control[1],
+                      route.end_control[0], route.end_control[1], route.end[0], route.end[1], marker))
     for item in positioned:
         table, rect = item.table, item.rect
         lines.append('<g transform="translate(%g %g)"><rect width="%g" height="%g" rx="10" fill="#1b212b" stroke="#2b333f"/>' %
