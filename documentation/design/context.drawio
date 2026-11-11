@@ -1,6 +1,7 @@
 <mxfile host="Electron">
   <diagram name="Page-1" id="perdUFbLK4pxoe8fBefH">
     <mxGraphModel dx="2554" dy="1046" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="1">
+      <!-- направление связи: наконечник всегда у target (endArrow=classic, startArrow=none), то есть source → target; имя узла — атрибут c4Name -->
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -118,7 +119,7 @@
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="NDONpFcxHAg60I7d0BJD-63" edge="1" parent="NDONpFcxHAg60I7d0BJD-31" source="NDONpFcxHAg60I7d0BJD-41" style="edgeStyle=orthogonalEdgeStyle;shape=connector;curved=0;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;strokeWidth=2;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=16;fontColor=default;labelBackgroundColor=default;defaultLabelBackgroundColor=page;startArrow=classic;startFill=1;endArrow=none;endFill=0;" target="NDONpFcxHAg60I7d0BJD-43">
+        <mxCell id="NDONpFcxHAg60I7d0BJD-63" edge="1" parent="NDONpFcxHAg60I7d0BJD-31" source="NDONpFcxHAg60I7d0BJD-43" style="edgeStyle=orthogonalEdgeStyle;shape=connector;curved=0;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=default;strokeWidth=2;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=16;fontColor=default;labelBackgroundColor=default;defaultLabelBackgroundColor=page;startArrow=none;startFill=0;endArrow=classic;" target="NDONpFcxHAg60I7d0BJD-41">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="NDONpFcxHAg60I7d0BJD-64" connectable="0" parent="NDONpFcxHAg60I7d0BJD-63" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;fontSize=16;defaultLabelBackgroundColor=page;" value="gRPC&lt;div&gt;[ID -&amp;gt; S3://path]&lt;br&gt;[Token validate]&lt;/div&gt;" vertex="1">
@@ -176,7 +177,7 @@
             <mxPoint x="5" y="30" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="NDONpFcxHAg60I7d0BJD-80" edge="1" parent="NDONpFcxHAg60I7d0BJD-31" source="NDONpFcxHAg60I7d0BJD-41" style="edgeStyle=orthogonalEdgeStyle;shape=connector;curved=0;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.569;entryY=-0.003;entryDx=0;entryDy=0;entryPerimeter=0;strokeColor=default;strokeWidth=2;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=16;fontColor=default;labelBackgroundColor=default;defaultLabelBackgroundColor=page;startArrow=classic;startFill=1;endArrow=none;endFill=0;" target="NDONpFcxHAg60I7d0BJD-71">
+        <mxCell id="NDONpFcxHAg60I7d0BJD-80" edge="1" parent="NDONpFcxHAg60I7d0BJD-31" source="NDONpFcxHAg60I7d0BJD-71" style="edgeStyle=orthogonalEdgeStyle;shape=connector;curved=0;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.569;exitY=-0.003;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.75;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;strokeColor=default;strokeWidth=2;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=16;fontColor=default;labelBackgroundColor=default;defaultLabelBackgroundColor=page;startArrow=none;startFill=0;endArrow=classic;" target="NDONpFcxHAg60I7d0BJD-41">
           <mxGeometry relative="1" x="0.0012" as="geometry" />
         </mxCell>
         <mxCell id="NDONpFcxHAg60I7d0BJD-82" connectable="0" parent="NDONpFcxHAg60I7d0BJD-80" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];inheritText=1;fontSize=16;defaultLabelBackgroundColor=page;" value="gRPC&lt;br&gt;[Announce]" vertex="1">

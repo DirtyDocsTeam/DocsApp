@@ -31,9 +31,10 @@ The canonical rules live exclusively in `.agents/`. Tool-specific instruction fi
 - Run focused checks available in the repository and report anything that could not be verified.
 - C4 relationship directions come from arrowheads in `documentation/design/context.drawio`, not from the
   wording of an edge label: `A → B` means the arrowhead is drawn at `B`, so `gRPC [Announce]` is
-  `Worker Pool → Main API Plane`. The connections table in `documentation/design/design.md` is generated from
-  the diagram (`make c4-relations`) and verified in CI (`make c4-check`); read it instead of inferring
-  direction from protocol names, and never edit the block by hand.
+  `Worker Pool → Main API Plane`. The file is normalized — every edge has `endArrow=classic` at `target`
+  and `startArrow=none`, so in XML the direction is simply `source → target`; node names are the `c4Name`
+  attribute of their `<object>`. The connections table in `documentation/design/design.md` is maintained by
+  hand and may lag behind the diagram — the diagram wins.
 - API contracts (REST, GraphQL, gRPC) are generated from code, not written by hand: `make api-docs` renders
   `documentation/api/` by the rules in `api-docs.toml`, and the `docs → wiki` workflow publishes it. When an
   endpoint, schema, or `.proto` changes, update `api-docs.toml` or the source annotations instead of editing

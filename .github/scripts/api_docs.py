@@ -34,6 +34,8 @@ try:
 except ModuleNotFoundError:  # Python < 3.11
     tomllib = None
 
+from yaml_subset import YamlSubset, YamlSubsetError
+
 DEFAULT_REPO = "DirtyDocsTeam/DocsApp"
 DEFAULT_REF = "main"
 DEFAULT_CONFIG = "api-docs.toml"
@@ -90,12 +92,15 @@ SECURITY_ANNOTATIONS = {
     "RolesAllowed": "роли",
 }
 
+GQL_FRAMEWORK_TYPES = {"DataFetchingEnvironment", "DataFetchingFieldSelectionSet", "SelectionSet"}
+
 GQL_SCALARS = {
     "String", "Int", "Long", "Short", "Byte", "Char", "Float", "Double", "Boolean", "ID",
     "BigDecimal", "BigInteger", "Date", "DateTime", "LocalDate", "LocalDateTime", "OffsetDateTime",
     "Instant", "ZonedDateTime", "Duration", "UUID", "URI", "URL", "Json", "JSON", "Object", "Number",
     "Time", "Timestamp", "Decimal",
 }
+GQL_EXAMPLE_MAX_DEPTH = 5
 
 MODIFIERS = {
     "public", "private", "protected", "internal", "static", "final", "abstract", "open", "override",
@@ -418,6 +423,8 @@ class Param:
     location: str = ""
     description: str = ""
     annotations: list[str] = field(default_factory=list)
+    is_property: bool = False
+    is_private: bool = False
 
 
 @dataclass
@@ -461,8 +468,15 @@ PROP_RE = re.compile(r"\b(?:val|var)\s+([A-Za-z_]\w*)\s*:")
 
 
 def find_body(masked: str, pos: int) -> tuple[int, int]:
-    """Границы тела класса после его заголовка; (-1, -1), если тела нет."""
+    """Границы тела класса после его заголовка; (-1, -1), если тела нет.
+
+    Заголовок может быть многострочным и содержать параметры конструктора
+    (`class Query(private val dsl: DSLContext, ...) {`), поэтому «новая декларация
+    началась» проверяется только по символам вне скобок: иначе `val` из параметров
+    обрывает поиск тела и класс теряет все методы.
+    """
     depth = 0
+    head: list[str] = []
     limit = min(len(masked), pos + 4000)
     i = pos
     while i < limit:
@@ -476,23 +490,29 @@ def find_body(masked: str, pos: int) -> tuple[int, int]:
         elif ch == ">" and depth > 0:
             depth -= 1
         elif ch == "{" and depth == 0:
-            if re.search(r"\b(?:fun|val|var|class|interface|object)\b", masked[pos:i]):
+            if re.search(r"\b(?:fun|val|var|class|interface|object)\b", "".join(head)):
                 return -1, -1
             return i, match_forward(masked, i, "{", "}")
         elif ch == "{":
             depth += 1
         elif ch == "}":
             depth = max(0, depth - 1)
+        elif depth == 0:
+            head.append(ch)
         i += 1
     return -1, -1
 
 
 def top_level_index(masked: str, char: str, start: int = 0, end: int | None = None) -> int:
+    """Индекс `char` на нулевой глубине вложенности. Искомый символ проверяется до учёта
+    глубины, иначе поиск `{` (или `)`) не находит сам себя."""
     end = len(masked) if end is None else end
     round_ = square = curly = angle = 0
     i = start
     while i < end:
         ch = masked[i]
+        if ch == char and not (round_ or square or curly or angle):
+            return i
         if ch == "(":
             round_ += 1
         elif ch == ")":
@@ -509,8 +529,6 @@ def top_level_index(masked: str, char: str, start: int = 0, end: int | None = No
             angle += 1
         elif ch == ">" and angle > 0:
             angle -= 1
-        elif ch == char and not (round_ or square or curly or angle):
-            return i
         i += 1
     return -1
 
@@ -542,6 +560,8 @@ def parse_params(masked: str, text: str, annotations: list[Annotation],
         colon = top_level_index(clean, ":")
         equals = top_level_index(clean, "=")
         param = Param(annotations=ann_names(own))
+        param.is_property = bool(re.search(r"\b(?:val|var)\b", clean))
+        param.is_private = bool(re.search(r"\bprivate\b", clean))
         if colon >= 0 and (equals < 0 or colon < equals):
             param.name = last_ident(clean[:colon])
             type_end = equals if equals > colon else len(clean)
@@ -885,13 +905,16 @@ def collect_graphql(sources: list[SourceFile]) -> tuple[list[GqlField], list[Gql
                 kind = "enum"
             elif decl.kind == "interface":
                 kind = "interface"
-            elif decl.params or decl.properties:
+            elif any(param.is_property and not param.is_private for param in decl.params) or decl.properties:
                 kind = "type"
             if kind:
                 all_types.setdefault(decl.name, GqlType(
                     name=decl.name, kind=kind, line=decl.line,
                     description=decl.doc or ann_map(decl.annotations).get("Description", ""),
-                    fields=[p for p in (decl.params + decl.properties) if p.name],
+                    # у enum в схему идут значения, а свойства конструктора (`dbValue`) — нет
+                    fields=[] if kind == "enum"
+                    else [p for p in decl.params if p.name and p.is_property and not p.is_private] +
+                    [p for p in decl.properties if p.name],
                     values=decl.enum_values,
                 ))
             for method in decl.methods:
@@ -909,7 +932,8 @@ def collect_graphql(sources: list[SourceFile]) -> tuple[list[GqlField], list[Gql
                     returns=method.returns or "String",
                     line=method.line,
                     file=source.rel,
-                    args=method.params,
+                    args=[param for param in method.params
+                          if param.type.strip("?") not in GQL_FRAMEWORK_TYPES],
                     description=own.get("Description") or method.doc,
                 ))
 
@@ -1354,137 +1378,8 @@ def parse_proto(path: Path, rel: str, text: str) -> ProtoDoc:
 #
 # Для сервисов, чей контракт ещё не выражен кодом (или выражен не аннотациями), допускается
 # декларативный файл рядом с сервисом — как `backend/s3-gateway/api-contracts.yaml`.
-# Поддерживается подмножество YAML: отображения, списки, скаляры и блочные строки (`|`, `>`).
-# Всё остальное (flow-стиль `{}`/`[]`, якоря, теги, несколько документов) — ошибка с номером
-# строки: тихо неверный контракт хуже громкой ошибки, а полноценный YAML-парсер в стандартную
-# библиотеку Python не входит.
-
-
-class YamlSubsetError(ValueError):
-    """Синтаксис вне поддерживаемого подмножества YAML."""
-
-
-def yaml_scalar(raw: str):
-    value = raw.strip()
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-        return value[1:-1]
-    if value in {"null", "~", ""}:
-        return None
-    return value
-
-
-class YamlSubset:
-    """Минимальный YAML-читатель под декларативные контракты."""
-
-    def __init__(self, text: str, where: str = ""):
-        self.where = where or "yaml"
-        self.lines: list[tuple[int, str, int]] = []
-        for number, raw in enumerate(text.splitlines(), start=1):
-            if "\t" in raw[:len(raw) - len(raw.lstrip(" \t"))]:
-                raise YamlSubsetError("%s:%d: табуляция в отступе не поддерживается"
-                                      % (self.where, number))
-            stripped = raw.strip()
-            if not stripped or stripped.startswith("#"):
-                continue
-            if stripped.startswith("---"):
-                raise YamlSubsetError("%s:%d: несколько документов в одном файле не поддерживаются"
-                                      % (self.where, number))
-            indent = len(raw) - len(raw.lstrip(" "))
-            self.lines.append((indent, stripped, number))
-        self.pos = 0
-
-    def parse(self) -> dict:
-        if not self.lines:
-            return {}
-        value = self.parse_node(self.lines[0][0])
-        if self.pos < len(self.lines):
-            _, text, number = self.lines[self.pos]
-            raise YamlSubsetError("%s:%d: неожиданная строка `%s`" % (self.where, number, text))
-        if not isinstance(value, dict):
-            raise YamlSubsetError("%s: на верхнем уровне ожидалось отображение "
-                                  "(`сервис:` → `host`/`paths`)" % self.where)
-        return value
-
-    def parse_node(self, indent: int):
-        _, text, _ = self.lines[self.pos]
-        if text == "-" or text.startswith("- "):
-            return self.parse_sequence(indent)
-        return self.parse_mapping(indent)
-
-    def parse_mapping(self, indent: int, seed: tuple[str, str, int] | None = None) -> dict:
-        result: dict = {}
-        if seed is not None:
-            key, rest, number = seed
-            result[key] = self.parse_value(rest, indent, number)
-        while self.pos < len(self.lines):
-            line_indent, text, number = self.lines[self.pos]
-            if line_indent != indent or text == "-" or text.startswith("- "):
-                break
-            key, rest = self.split_key(text, number)
-            self.pos += 1
-            if key in result:
-                raise YamlSubsetError("%s:%d: повторяющийся ключ `%s`" % (self.where, number, key))
-            result[key] = self.parse_value(rest, indent, number)
-        return result
-
-    def parse_sequence(self, indent: int) -> list:
-        items: list = []
-        while self.pos < len(self.lines):
-            line_indent, text, number = self.lines[self.pos]
-            if line_indent != indent or not (text == "-" or text.startswith("- ")):
-                break
-            self.pos += 1
-            body = text[1:].strip()
-            if not body:
-                if self.pos < len(self.lines) and self.lines[self.pos][0] > indent:
-                    items.append(self.parse_node(self.lines[self.pos][0]))
-                else:
-                    items.append(None)
-                continue
-            if ":" in body and not body.startswith(("\"", "'")):
-                key, rest = self.split_key(body, number)
-                items.append(self.parse_mapping(indent + len(text) - len(body),
-                                                seed=(key, rest, number)))
-            else:
-                items.append(yaml_scalar(body))
-        return items
-
-    def parse_value(self, rest: str, indent: int, number: int):
-        if rest in {"|", "|-", "|+", ">", ">-", ">+"}:
-            return self.parse_block_scalar(rest, indent)
-        if rest:
-            return yaml_scalar(rest)
-        if self.pos < len(self.lines):
-            next_indent, next_text, _ = self.lines[self.pos]
-            if next_indent > indent:
-                return self.parse_node(next_indent)
-            if next_indent == indent and (next_text == "-" or next_text.startswith("- ")):
-                return self.parse_sequence(indent)
-        return None
-
-    def parse_block_scalar(self, style: str, indent: int) -> str:
-        collected: list[str] = []
-        while self.pos < len(self.lines) and self.lines[self.pos][0] > indent:
-            collected.append(self.lines[self.pos][1])
-            self.pos += 1
-        return collapse(" ".join(collected)) if style.startswith(">") else "\n".join(collected)
-
-    def split_key(self, text: str, number: int) -> tuple[str, str]:
-        if text[0] in "&*!?%":
-            raise YamlSubsetError("%s:%d: конструкция `%s` не поддерживается"
-                                  % (self.where, number, text[0]))
-        if ":" not in text:
-            raise YamlSubsetError("%s:%d: ожидалось `ключ: значение`, получено `%s`"
-                                  % (self.where, number, text))
-        key, _, rest = text.partition(":")
-        key = key.strip().strip("\"'")
-        if not key:
-            raise YamlSubsetError("%s:%d: пустой ключ" % (self.where, number))
-        value = rest.strip()
-        if value.startswith(("[", "{")):
-            raise YamlSubsetError("%s:%d: flow-стиль (`%s`) не поддерживается — пишите блоками"
-                                  % (self.where, number, value))
-        return key, value
+# Читается он общим модулем `yaml_subset.py` (подмножество YAML: отображения, списки, скаляры,
+# блочные строки); сообщения об ошибках приходят с номером строки.
 
 
 CONTRACT_KEYS = {"host", "description", "paths"}
@@ -2075,6 +1970,14 @@ def render_graphql(surfaces: list[Surface], meta: dict) -> str:
         if not surface.gql_fields:
             lines += ["Полей `@Query`/`@Mutation` в исходниках нет.", ""]
             continue
+        conflicts = {}
+        for field in surface.gql_fields:
+            conflicts.setdefault(field.name, set()).add(field.returns)
+        for name, returns in sorted(conflicts.items()):
+            if len(returns) > 1:
+                lines += ["> ⚠ Поле `%s` объявлено с несовместимыми типами результата: %s." %
+                          (name, ", ".join(sorted(returns))), ""]
+        type_map = {item.name: item for item in surface.gql_types}
         for kind, label, hint in (
             ("query", "Запросы", "Читают данные и ничего не меняют."),
             ("mutation", "Мутации", "Меняют состояние."),
@@ -2088,14 +1991,16 @@ def render_graphql(surfaces: list[Surface], meta: dict) -> str:
                            [[code(field.name), gql_args(field), code(field.returns),
                              field.description] for field in chunk])
             for field in chunk:
-                lines += render_gql_field(field, meta)
+                lines += render_gql_field(field, meta, type_map)
         if surface.gql_types:
             lines += ["### Типы", "",
                       "_Только те, на которые ссылаются запросы и мутации._", ""]
             lines += table(["Тип", "Вид", "Содержимое", "Описание"],
                            [[code(gql_type.name), gql_type.kind,
-                             amounts(len(gql_type.fields) or len(gql_type.values),
-                                     "поле", "поля", "полей"), gql_type.description]
+                             amounts(len(gql_type.values), "значение", "значения", "значений")
+                             if gql_type.kind == "enum"
+                             else amounts(len(gql_type.fields), "поле", "поля", "полей"),
+                             gql_type.description]
                             for gql_type in surface.gql_types])
             for gql_type in surface.gql_types:
                 lines += render_gql_type(gql_type)
@@ -2113,7 +2018,32 @@ def gql_args(field: GqlField) -> str:
                      + (" = %s" % arg.default if arg.default else "") for arg in field.args)
 
 
-def render_gql_field(field: GqlField, meta: dict) -> list[str]:
+def gql_example_value(type_name: str) -> str:
+    return "true" if "Boolean" in type_name else "42" if any(token in type_name for token in ("Int", "Long", "ID")) else '"example"'
+
+
+def gql_selection(type_name: str, type_map: dict[str, GqlType], depth: int = GQL_EXAMPLE_MAX_DEPTH) -> list[str]:
+    target = next((name for name in type_names(type_name) if name in type_map), "")
+    if not target:
+        return []
+
+    def select(name: str, remaining: int) -> list[str]:
+        lines = []
+        for field in type_map[name].fields:
+            nested = next((item for item in type_names(field.type)
+                           if item in type_map and type_map[item].kind != "enum"), "")
+            if not nested:
+                lines.append(field.name)
+            elif remaining > 0:
+                nested_lines = select(nested, remaining - 1)
+                if nested_lines:
+                    lines += [field.name + " {", *("  " + item for item in nested_lines), "}"]
+        return lines
+
+    return select(target, depth)
+
+
+def render_gql_field(field: GqlField, meta: dict, type_map: dict[str, GqlType]) -> list[str]:
     lines = ["#### `%s(%s): %s`" % (field.name, gql_args(field) if field.args else "",
                                     field.returns), ""]
     if field.description:
@@ -2123,6 +2053,18 @@ def render_gql_field(field: GqlField, meta: dict) -> list[str]:
                        [[code(arg.name), code(arg.type),
                          code(arg.default) if arg.default else "—", arg.description]
                         for arg in field.args])
+    variables = ", ".join("$%s: %s" % (arg.name, arg.type) for arg in field.args)
+    operation = "mutation" if field.kind == "mutation" else "subscription" if field.kind == "subscription" else "query"
+    arguments = ", ".join("%s: $%s" % (arg.name, arg.name) for arg in field.args)
+    selection = gql_selection(field.returns, type_map) or ["__typename"]
+    lines += ["**Пример запроса:**", "", "```graphql",
+              "%s %s%s {" % (operation, field.name[:1].upper() + field.name[1:],
+                               "(" + variables + ")" if variables else ""),
+              "  %s%s {" % (field.name, "(" + arguments + ")" if arguments else ""),
+              *("    " + item for item in selection), "  }", "}", "```", ""]
+    if field.args:
+        lines += ["```json", "{", *("  \"%s\": %s%s" % (arg.name, gql_example_value(arg.type),
+                  "," if index < len(field.args) - 1 else "") for index, arg in enumerate(field.args)), "}", "```", ""]
     if field.file:
         name = field.file.rsplit("/", 1)[-1]
         label = "%s:%d" % (name, field.line) if field.line else name

@@ -3,8 +3,10 @@
 #   make help           — список целей
 #   make api-docs       — пересобрать контракты REST/GraphQL/gRPC в documentation/api/
 #   make api-docs-check — проверить, что страницы контрактов соответствуют коду
-#   make c4-relations   — перегенерировать таблицу связей C4 из context.drawio
-#   make c4-check       — проверить, что таблица связей соответствует диаграмме
+#   make db-schema      — пересобрать documentation/design/db.sql из Liquibase-чанжлога
+#   make db-check       — проверить, что db.sql соответствует чанжлогу
+#   make db-erd         — пересобрать ERD (SVG + Mermaid) из Liquibase-чанжлога
+#   make db-verify      — прогнать db.sql на чистой PostgreSQL в docker
 #   make docs-preview   — собрать вики локально в /tmp/wiki-dry, ничего не публикуя
 #
 # Нужен python3 (3.11+) — скрипты используют только стандартную библиотеку.
@@ -12,11 +14,11 @@
 PYTHON ?= python3
 API_DOCS := .github/scripts/api_docs.py
 WIKI_SYNC := .github/scripts/wiki_sync.py
-C4_RELATIONS := .github/scripts/c4_relations.py
+DB_SCHEMA := .github/scripts/db_schema.py
 
 .DEFAULT_GOAL := help
 
-.PHONY: help api-docs api-docs-check c4-relations c4-check docs-preview
+.PHONY: help api-docs api-docs-check db-schema db-check db-erd db-verify docs-preview
 
 help: ## Показать этот список
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -27,11 +29,17 @@ api-docs: ## Собрать контракты REST/GraphQL/gRPC в documentatio
 api-docs-check: ## Проверить, что страницы контрактов соответствуют коду
 	$(PYTHON) $(API_DOCS) --check
 
-c4-relations: ## Обновить таблицу связей C4 в design.md из context.drawio
-	$(PYTHON) $(C4_RELATIONS) --write
+db-schema: ## Пересобрать documentation/design/db.sql из Liquibase-чанжлога
+	$(PYTHON) $(DB_SCHEMA)
 
-c4-check: ## Проверить, что таблица связей соответствует context.drawio
-	$(PYTHON) $(C4_RELATIONS) --check
+db-check: ## Проверить, что db.sql соответствует чанжлогу
+	$(PYTHON) $(DB_SCHEMA) --check
 
-docs-preview: api-docs c4-relations ## Собрать вики в /tmp/wiki-dry без публикации
+db-erd: ## Пересобрать ERD: SVG и Mermaid из Liquibase-чанжлога
+	$(PYTHON) $(DB_SCHEMA) --render
+
+db-verify: ## Прогнать db.sql на чистой PostgreSQL в docker
+	$(PYTHON) $(DB_SCHEMA) --verify
+
+docs-preview: api-docs ## Собрать вики в /tmp/wiki-dry без публикации
 	$(PYTHON) $(WIKI_SYNC) --out /tmp/wiki-dry --no-dates
