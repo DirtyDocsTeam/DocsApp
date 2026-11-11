@@ -4,12 +4,12 @@ import kotlinx.serialization.json.Json
 import org.jooq.impl.DSL
 import ru.dirtydocs.api.users.tokens.Token
 import ru.dirtydocs.api.users.tokens.access.TokenAccessRights
-import ru.novari.data.ManyRelation
-import ru.novari.data.Projection
-import ru.novari.data.columnNodes
-import ru.novari.data.jsonb
-import ru.novari.spectra.generated.jooq.tables.references.API_TOKENS
-import ru.novari.spectra.generated.jooq.tables.references.USERS
+import ru.dirtydocs.data.ManyRelation
+import ru.dirtydocs.data.Projection
+import ru.dirtydocs.data.columnNodes
+import ru.dirtydocs.data.jsonb
+import ru.dirtydocs.spectra.generated.jooq.tables.references.API_TOKENS
+import ru.dirtydocs.spectra.generated.jooq.tables.references.USERS
 import kotlin.collections.plus
 
 object UserProjections {

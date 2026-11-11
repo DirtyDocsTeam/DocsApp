@@ -2,8 +2,8 @@ package ru.dirtydocs.api.users
 
 import org.jooq.Record
 import ru.dirtydocs.api.users.tokens.Token
-import ru.novari.data.ProjectionFields
-import ru.novari.data.RecordView
+import ru.dirtydocs.data.ProjectionFields
+import ru.dirtydocs.data.RecordView
 import java.time.OffsetDateTime
 
 open class User(

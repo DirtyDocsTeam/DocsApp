@@ -2,10 +2,8 @@ package ru.dirtydocs.api.themes.collections
 
 import org.jooq.Record
 import ru.dirtydocs.api.themes.Theme
-import ru.dirtydocs.api.themes.ThemeParameters
-import ru.dirtydocs.api.themes.styles.Style
-import ru.novari.data.ProjectionFields
-import ru.novari.data.RecordView
+import ru.dirtydocs.data.ProjectionFields
+import ru.dirtydocs.data.RecordView
 
 open class ThemeCollection(
     record : Record,

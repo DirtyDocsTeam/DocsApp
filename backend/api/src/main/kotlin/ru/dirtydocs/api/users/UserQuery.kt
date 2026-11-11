@@ -7,7 +7,7 @@ import org.eclipse.microprofile.graphql.GraphQLApi
 import org.eclipse.microprofile.graphql.Query
 import org.jooq.DSLContext
 import ru.dirtydocs.api.users.UserProjections.USER
-import ru.novari.data.ProjectionContext
+import ru.dirtydocs.data.ProjectionContext
 
 @GraphQLApi
 class UserQuery(

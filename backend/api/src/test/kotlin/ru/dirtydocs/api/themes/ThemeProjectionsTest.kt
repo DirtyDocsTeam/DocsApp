@@ -5,7 +5,8 @@ import org.jooq.impl.DSL
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import ru.novari.data.ProjectionContext
+import ru.dirtydocs.data.ProjectionContext
+import ru.dirtydocs.data.Selection
 
 class ThemeProjectionsTest {
     @Test
