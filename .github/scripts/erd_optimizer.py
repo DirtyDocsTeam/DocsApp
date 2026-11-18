@@ -853,6 +853,32 @@ def smooth_terminal_path(points, child_side, parent_side, positioned, child, par
     return ' '.join(commands),tuple(geometry)
 
 
+def rounded_orthogonal_path(points, corner_radii, default_radius=12):
+    """Render an orthogonal route as line segments with short rounded corners."""
+    if len(points) < 2:
+        return ''
+    commands=['M %g %g' % points[0]]
+    for index, point in enumerate(points[1:-1], start=1):
+        previous, following=points[index-1],points[index+1]
+        incoming=(point[0]-previous[0],point[1]-previous[1])
+        outgoing=(following[0]-point[0],following[1]-point[1])
+        incoming_length=math.hypot(*incoming)
+        outgoing_length=math.hypot(*outgoing)
+        if not incoming_length or not outgoing_length or abs(incoming[0]*outgoing[0]+incoming[1]*outgoing[1]) > 1e-6:
+            commands.append('L %g %g' % point)
+            continue
+        radius=min(corner_radii.get(corner_key(previous,point,following),default_radius),
+                   incoming_length/2,outgoing_length/2)
+        if radius <= 0:
+            commands.append('L %g %g' % point)
+            continue
+        entry=(point[0]-incoming[0]/incoming_length*radius,point[1]-incoming[1]/incoming_length*radius)
+        exit=(point[0]+outgoing[0]/outgoing_length*radius,point[1]+outgoing[1]/outgoing_length*radius)
+        commands.extend(('L %g %g' % entry,'Q %g %g %g %g' % (*point,*exit)))
+    commands.append('L %g %g' % points[-1])
+    return ' '.join(commands)
+
+
 class Router:
     """Shared rectilinear visibility grid; geometric edge checks are cached across routes."""
     def __init__(self, positioned, relations, clearance=12, gap=24, junctions=(), extra_points=(), no_turns=()):

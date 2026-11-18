@@ -37,7 +37,7 @@ from yaml_subset import YamlSubset
 from sql_schema import Column, Table, parse_ddl, column_references
 from erd_optimizer import (LayoutOptions, optimize_grid, route_all, hits_rect, overlap_length, trim_ports,
                            smooth_terminal_path, merge_junctions, junction_conflicts, endpoint_keys, shared_corner_radii,
-                           TRANSPORT_GAP)
+                           rounded_orthogonal_path, TRANSPORT_GAP)
 
 CHANGELOG_DIR = "backend/api/src/main/resources/db/changelog"
 MASTER = CHANGELOG_DIR + "/db.changelog-master.yaml"
@@ -509,26 +509,26 @@ def legacy_relationship_routes(positioned: list[PositionedTable]) -> list[Relati
 
 
 def relationship_routes(positioned: list[PositionedTable], routing_passes: int = 2) -> list[RelationshipRoute]:
-    if len(positioned) <= 24 or not routing_passes:
-        return legacy_relationship_routes(positioned)
+    if len(positioned) <= 24:
+        routes=[]
+        for route in legacy_relationship_routes(positioned):
+            midpoint=(route.start[0]+route.end[0])/2
+            points=(route.start,(midpoint,route.start[1]),(midpoint,route.end[1]),route.end)
+            routes.append(replace(route,waypoints=points,svg_path=rounded_orthogonal_path(points,{})))
+        return routes
     def factory(rel, points, child_side, parent_side):
         return RelationshipRoute(rel,points[0],points[1],points[-2],points[-1],child_side,parent_side,points)
     def evaluate(routes):
         score=score_layout(positioned,routes)
         return score.table_intersections,score.line_intersections,score.total
-    routes=route_all(positioned,relationships([item.table for item in positioned]),routing_passes,factory,evaluate)
+    routes=route_all(positioned,relationships([item.table for item in positioned]),max(1,routing_passes),factory,evaluate)
     zones=tuple(merge_junctions(positioned,{r.relationship:(r.waypoints,r.child_side,r.parent_side) for r in routes}))
     radii=shared_corner_radii({r.relationship:(r.waypoints,r.child_side,r.parent_side) for r in routes},positioned,zones)
     endpoints=Counter(key for route in routes for key in route_endpoint_keys(route))
     result=[]
     for route in routes:
-        path,geometry=smooth_terminal_path(route.waypoints,route.child_side,route.parent_side,
-                                           positioned,route.relationship.child,route.relationship.parent,
-                                           endpoints[(route.relationship.child,route.relationship.column,route.child_side)]>1,
-                                           endpoints[(route.relationship.parent,route.relationship.parent_column,route.parent_side)]>1,
-                                           [(key,rect) for key,rect in zones if key not in endpoint_keys(route.relationship)],
-                                           [(key,rect) for key,rect in zones if key in endpoint_keys(route.relationship)],radii)
-        result.append(replace(route,waypoints=geometry,svg_path=path,merge_zones=zones))
+        path=rounded_orthogonal_path(route.waypoints,radii)
+        result.append(replace(route,svg_path=path,merge_zones=zones))
     return result
 
 

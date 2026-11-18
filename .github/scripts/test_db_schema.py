@@ -40,8 +40,8 @@ class SvgErdLayoutTest(unittest.TestCase):
         self.assertIn('marker-start="url(#zero-many-left)"', svg)
         self.assertNotIn('marker-end=', svg)
         self.assertIn('orient="0"', svg)
-        self.assertIn(" C ", svg)
-        self.assertNotIn(" L ", svg)
+        self.assertIn(" L ", svg)
+        self.assertNotIn(" C ", svg)
 
     def test_segment_crossing_excludes_shared_endpoints(self) -> None:
         self.assertTrue(db_schema.segments_intersect((0, 0), (4, 4), (0, 4), (4, 0)))
