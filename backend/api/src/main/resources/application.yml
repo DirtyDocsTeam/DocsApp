@@ -11,6 +11,8 @@ quarkus:
     migrate-at-start: true
   oidc:
     application-type: web-app
+    authentication:
+      scopes: openid,email
     roles:
       role-claim-path: realm_access/roles
     token:
