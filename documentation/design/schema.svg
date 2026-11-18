@@ -19,6 +19,7 @@
 <path class="relationship" d="M 1635.75 203 L 1238.88 203 Q 1226.88 203 1226.88 191 L 1226.88 59 Q 1226.88 47 1214.88 47 L 818 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#zero-many-right)"><title>themes.owner_user_id → users.id</title></path>
 <path class="relationship" d="M 906.25 1345 L 925.75 1345 Q 937.75 1345 937.75 1357 L 937.75 1567.5 Q 937.75 1579.5 949.75 1579.5 L 969.25 1579.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>user_theme_collections.theme_collection_id → theme_collections.id</title></path>
 <path class="relationship" d="M 906.25 1319 L 919.45 1319 Q 930.25 1319 930.25 1308.2 L 930.25 825.25 Q 930.25 813.25 918.25 813.25 L 854 813.25 Q 842 813.25 842 801.25 L 842 57.8 Q 842 47 831.2 47 L 818 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>user_theme_collections.user_id → users.id</title></path>
+<path class="relationship" d="M 334.75 448.5 L 371.05 448.5 Q 382.75 448.5 382.75 436.8 L 382.75 434.2 Q 382.75 422.5 371.05 422.5 L 334.75 422.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#zero-many-left)"><title>job_request.parent_request_id → job_request.id</title></path>
 <g transform="translate(0 0)"><rect width="234" height="190" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H224 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">api_tokens</text>

@@ -452,7 +452,13 @@ def relationships(tables: list[Table]) -> list[Relationship]:
     known = {table.name for table in tables}
     return [Relationship(table.name, column.name, parent, parent_column, column.nullable)
             for table in tables for column in table.columns for parent, parent_column in column_references(column)
-            if parent in known and parent != table.name]
+            if parent in known]
+
+
+def routed_relationships(tables: list[Table]) -> list[Relationship]:
+    """Return only edges between cards; self-FKs are rendered as local loops."""
+    return [relationship for relationship in relationships(tables)
+            if relationship.child != relationship.parent]
 
 
 def relationship_route(relationship: Relationship, positioned: dict[str, PositionedTable],
@@ -483,7 +489,7 @@ def relationship_route(relationship: Relationship, positioned: dict[str, Positio
 def legacy_relationship_routes(positioned: list[PositionedTable]) -> list[RelationshipRoute]:
     by_name = {item.table.name: item for item in positioned}
     routes = []
-    for relationship in sorted(relationships([item.table for item in positioned]),
+    for relationship in sorted(routed_relationships([item.table for item in positioned]),
                                key=lambda item: (item.parent, item.child, item.column)):
         child_rect = by_name[relationship.child].rect
         parent_rect = by_name[relationship.parent].rect
@@ -505,6 +511,25 @@ def legacy_relationship_routes(positioned: list[PositionedTable]) -> list[Relati
             force = abs(route.start_control[0] - route.start[0]) + abs(route.end_control[0] - route.end[0])
             return blocked, crossings, force
         routes.append(min(candidates, key=cost))
+    return routes
+
+
+def self_relationship_routes(positioned: list[PositionedTable]) -> list[RelationshipRoute]:
+    """Render a self-FK as a compact loop on the right side of its own card."""
+    by_name={item.table.name:item for item in positioned}
+    routes=[]
+    for index,relationship in enumerate(sorted((relationship for relationship in relationships(
+            [item.table for item in positioned]) if relationship.child == relationship.parent),
+            key=lambda rel:(rel.child,rel.column,rel.parent_column))):
+        item=by_name[relationship.child]
+        child_row=next(row for row,column in enumerate(item.table.columns) if column.name == relationship.column)
+        parent_row=next((row for row,column in enumerate(item.table.columns)
+                         if column.name == relationship.parent_column),0)
+        start=(item.rect.x+item.rect.width,item.rect.y+CARD_HEADER_HEIGHT+(child_row+.5)*CARD_ROW_HEIGHT)
+        end=(item.rect.x+item.rect.width,item.rect.y+CARD_HEADER_HEIGHT+(parent_row+.5)*CARD_ROW_HEIGHT)
+        loop_x=item.rect.x+item.rect.width+48+index*18
+        points=(start,(loop_x,start[1]),(loop_x,end[1]),end)
+        routes.append(RelationshipRoute(relationship,start,points[1],points[-2],end,1,1,points))
     return routes
 
 
@@ -549,8 +574,9 @@ def relationship_routes(positioned: list[PositionedTable], routing_passes: int =
         routes=[factory(relationship,*protected[relationship]) for relationship in sorted(protected,
                 key=lambda rel:(rel.child,rel.column,rel.parent,rel.parent_column))]
     else:
-        routes=route_all(positioned,relationships([item.table for item in positioned]),
+        routes=route_all(positioned,routed_relationships([item.table for item in positioned]),
                          max(1,routing_passes),factory,evaluate)
+    routes.extend(self_relationship_routes(positioned))
     zones=tuple(merge_junctions(positioned,{r.relationship:(r.waypoints,r.child_side,r.parent_side) for r in routes}))
     radii=shared_corner_radii({r.relationship:(r.waypoints,r.child_side,r.parent_side) for r in routes},positioned,zones)
     endpoints=Counter(key for route in routes for key in route_endpoint_keys(route))
@@ -628,7 +654,7 @@ def preoptimized_order(tables: list[Table], seed: str | None = None) -> list[Tab
     """Seed layout from leaf tables, then grow through already placed neighbours."""
     by_name = {table.name: table for table in tables}
     neighbours = {table.name: set() for table in tables}
-    for relationship in relationships(tables):
+    for relationship in routed_relationships(tables):
         neighbours[relationship.child].add(relationship.parent)
         neighbours[relationship.parent].add(relationship.child)
     leaves = sorted((name for name, linked in neighbours.items() if len(linked) == 1))
@@ -657,7 +683,7 @@ def layout_variant(tables: list[Table], seed: str | None = None,
         return score_layout(items, legacy_relationship_routes(items))
 
     degrees = {table.name: 0 for table in tables}
-    for relationship in relationships(tables):
+    for relationship in routed_relationships(tables):
         degrees[relationship.child] += 1
         degrees[relationship.parent] += 1
     ordered = preoptimized_order(tables, seed)
@@ -740,9 +766,9 @@ def layout_tables(tables: list[Table], fixed_positions: dict[str, tuple[float, f
                 for i, t in enumerate(ordered)]
         if any(violates_card_gap(a.rect,b.rect) for i,a in enumerate(initial) for b in initial[i+1:]):
             raise ValueError('Fixed layout positions overlap cards or violate the minimum gap')
-        return optimize_grid(initial,relationships(tables),options or LayoutOptions(),fixed_positions or {})
+        return optimize_grid(initial,routed_relationships(tables),options or LayoutOptions(),fixed_positions or {})
     degrees = {table.name: 0 for table in tables}
-    for relationship in relationships(tables):
+    for relationship in routed_relationships(tables):
         degrees[relationship.child] += 1
         degrees[relationship.parent] += 1
     seeds = sorted(name for name, degree in degrees.items() if degree == 1) or [None]

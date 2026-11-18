@@ -44,6 +44,15 @@ class SvgErdLayoutTest(unittest.TestCase):
         self.assertIn(" L ", svg)
         self.assertNotIn(" C ", svg)
 
+    def test_svg_renders_self_referencing_foreign_key_as_a_loop(self) -> None:
+        table = db_schema.Table("job_request", [
+            db_schema.Column("id", "bigint", primary=True),
+            db_schema.Column("parent_request_id", "bigint", reference=("job_request", "id")),
+        ])
+        svg = db_schema.render_svg([table])
+        self.assertIn("job_request.parent_request_id → job_request.id", svg)
+        self.assertIn('Q ', svg)
+
     def test_small_schema_uses_merge_protection(self) -> None:
         parent = db_schema.Table("parent", [db_schema.Column("id", "bigint", primary=True)])
         child = db_schema.Table("child", [
