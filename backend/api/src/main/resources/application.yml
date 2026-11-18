@@ -1,7 +1,7 @@
 quarkus:
   http:
     auth:
-      proactive: true
+      proactive: false
   hibernate-orm:
     database:
       generation: validate
@@ -10,7 +10,9 @@ quarkus:
     change-log: db/changelog/db.changelog-master.yaml
     migrate-at-start: true
   oidc:
-    application-type: web-app
+    application-type: hybrid
+    authentication:
+      scopes: openid,email
     roles:
       role-claim-path: realm_access/roles
     token:
@@ -25,3 +27,5 @@ quarkus:
     password: ${DB_PASSWORD:dirtydocs}
     jdbc:
       url: ${DB_URL:jdbc:postgresql://localhost:5432/dirtydocs}
+  jooq:
+    dialect: POSTGRES

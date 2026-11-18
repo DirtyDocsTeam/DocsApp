@@ -56,13 +56,16 @@
 | API Client → Ingress              | `REST/GQL`                                     |
 | Ingress → IDProvider              | `REST [OIDC]`                                  |
 | Ingress → Main API Plane          | `GQL [Main work]`                              |
+| Ingress → Main API Plane          | `GQL [WebSocket subscriptions]`                |
 | Ingress → S3 Gateway Plane        | `S3 (Ext path) [Web static] [Media artifacts]` |
 | IDProvider → External IDP         | `REST [ID data]`                               |
 | IDProvider → Main Database        | `SQLConn [ID data]`                            |
 | Main API Plane → IDProvider       | `REST [Token validate]`                        |
 | Main API Plane → Main Database    | `SQLConn [App data] [Job data]`                |
 | Main API Plane → Worker Pool      | `gRPC [Job assign]`                            |
+| Main API Plane → S3 Gateway Plane | `gRPC [Expect media] [Evict media]`            |
 | S3 Gateway Plane → Main API Plane | `gRPC [ID -> S3://path] [Token validate]`      |
+| S3 Gateway Plane → Main API Plane | `gRPC [Media receipt]`                         |
 | S3 Gateway Plane → Object storage | `S3 (Int path) [Web static] [Media artifacts]` |
 | Worker Pool → Main API Plane      | `gRPC [Announce]`                              |
 | Worker Pool → Object storage      | `S3 [Media artifacts]`                         |
