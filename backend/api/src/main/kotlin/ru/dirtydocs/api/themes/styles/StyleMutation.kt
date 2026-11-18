@@ -13,11 +13,14 @@ import org.jooq.impl.DSL
 import ru.dirtydocs.api.auth.ApiTokenAccessAuthorizer
 import ru.dirtydocs.api.generated.jooq.tables.references.STYLES
 import ru.dirtydocs.api.generated.jooq.tables.references.THEMES
+import ru.dirtydocs.api.generated.jooq.tables.references.THEME_COLLECTION_THEMES
+import ru.dirtydocs.api.generated.jooq.tables.references.USER_THEME_COLLECTIONS
 import ru.dirtydocs.api.themes.ThemeProjections
+import ru.dirtydocs.api.themes.collections.ThemeCollectionRole
 import ru.dirtydocs.data.ProjectionContext
 import java.time.OffsetDateTime
 
-/** Direct theme-owner commands for the otherwise schema-agnostic style payload. */
+/** Theme-owner and collection-editor commands for the schema-agnostic style payload. */
 @GraphQLApi
 class StyleMutation(
     private val contexts: Instance<ProjectionContext>,
@@ -25,7 +28,7 @@ class StyleMutation(
     private val tokenAccess: ApiTokenAccessAuthorizer,
 ) {
     @Mutation
-    @Description("Create a style in a theme owned by the current user")
+    @Description("Create a style in an editable theme")
     fun createStyle(
         env: DataFetchingEnvironment,
         themeId: Long,
@@ -34,7 +37,7 @@ class StyleMutation(
         dataJson: String,
     ): Style {
         tokenAccess.requireEdit { it.themes }
-        requireOwnedTheme(themeId)
+        requireEditableTheme(themeId)
         val id = dsl.insertInto(STYLES)
             .set(STYLES.THEME_ID, themeId)
             .set(STYLES.TYPE, type.dbValue)
@@ -47,7 +50,7 @@ class StyleMutation(
     }
 
     @Mutation
-    @Description("Replace a style in a theme owned by the current user")
+    @Description("Replace a style in an editable theme")
     fun updateStyle(
         env: DataFetchingEnvironment,
         id: Long,
@@ -61,35 +64,46 @@ class StyleMutation(
             .set(STYLES.EXAMPLE_TEXT, requiredExampleText(exampleText))
             .set(STYLES.DATA, JSONB.valueOf(StylePayload.requireJsonObject(dataJson)))
             .where(STYLES.ID.eq(id))
-            .and(STYLES.THEME_ID.`in`(ownedThemeIds()))
+            .and(STYLES.THEME_ID.`in`(editableThemeIds()))
             .execute()
         if (updated != 1) throw ClientErrorException(Response.Status.NOT_FOUND)
         return fetchStyle(env, id)
     }
 
     @Mutation
-    @Description("Delete a style from a theme owned by the current user")
+    @Description("Delete a style from an editable theme")
     fun deleteStyle(id: Long): Boolean {
         tokenAccess.requireDelete { it.themes }
         return dsl.deleteFrom(STYLES)
             .where(STYLES.ID.eq(id))
-            .and(STYLES.THEME_ID.`in`(ownedThemeIds()))
+            .and(STYLES.THEME_ID.`in`(editableThemeIds()))
             .execute() == 1
     }
 
     private fun fetchStyle(env: DataFetchingEnvironment, id: Long): Style =
         ThemeProjections.STYLE.select(env, contexts.get()).fetchById(dsl, id)
-            ?: error("Owned style is not visible")
+            ?: error("Editable style is not visible")
 
-    private fun requireOwnedTheme(themeId: Long) {
-        if (!dsl.fetchExists(DSL.selectOne().from(THEMES).where(THEMES.ID.eq(themeId).and(ownedThemeCondition())))) {
+    private fun requireEditableTheme(themeId: Long) {
+        if (!dsl.fetchExists(DSL.selectOne().from(THEMES).where(THEMES.ID.eq(themeId).and(editableThemeCondition())))) {
             throw ClientErrorException(Response.Status.NOT_FOUND)
         }
     }
 
-    private fun ownedThemeIds() = DSL.select(THEMES.ID).from(THEMES).where(ownedThemeCondition())
+    private fun editableThemeIds() = DSL.select(THEMES.ID).from(THEMES).where(editableThemeCondition())
 
-    private fun ownedThemeCondition() = ownerId.eq(requireViewer()).and(deletedAt.isNull)
+    private fun editableThemeCondition() = deletedAt.isNull.and(
+        ownerId.eq(requireViewer()).or(
+            THEMES.ID.`in`(
+                DSL.select(THEME_COLLECTION_THEMES.THEME_ID)
+                    .from(THEME_COLLECTION_THEMES)
+                    .join(USER_THEME_COLLECTIONS)
+                    .on(THEME_COLLECTION_THEMES.THEME_COLLECTION_ID.eq(USER_THEME_COLLECTIONS.THEME_COLLECTION_ID))
+                    .where(USER_THEME_COLLECTIONS.USER_ID.eq(requireViewer()))
+                    .and(USER_THEME_COLLECTIONS.ROLE.`in`(editorRoles)),
+            )
+        )
+    )
 
     private fun requireViewer(): Long = contexts.get().viewerId
         ?: throw ClientErrorException(Response.Status.UNAUTHORIZED)
@@ -97,7 +111,12 @@ class StyleMutation(
     private fun requiredExampleText(value: String): String = value.trim().also { require(it.isNotEmpty()) }
 
     private companion object {
-        val ownerId = DSL.field(DSL.name("themes", "owner_user_id"), Long::class.java)
         val deletedAt = DSL.field(DSL.name("themes", "deleted_at"), OffsetDateTime::class.java)
+        val ownerId = DSL.field(DSL.name("themes", "owner_user_id"), Long::class.java)
+        val editorRoles = listOf(
+            ThemeCollectionRole.EDITOR.dbValue,
+            ThemeCollectionRole.ADMIN.dbValue,
+            ThemeCollectionRole.OWNER.dbValue,
+        )
     }
 }

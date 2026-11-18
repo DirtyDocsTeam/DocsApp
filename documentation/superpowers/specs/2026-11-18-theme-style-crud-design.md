@@ -20,8 +20,10 @@ breaking change once the actual schemas are known.
 
 ## Rules
 
-- Only the direct owner (`themes.owner_user_id`) may mutate styles of the
-  theme. Collection membership never grants this capability.
+- The direct owner is an editor and administrator of their theme. In addition,
+  a member with `editor`, `admin`, or `owner` in any collection containing a
+  theme may mutate its styles; other capabilities continue to derive from the
+  collection role.
 - API-token callers require `themes.edit` for create/update and
   `themes.delete` for delete. OIDC callers use the same ownership rule.
 - `exampleText` must be non-blank; `data` must be a JSON object.
