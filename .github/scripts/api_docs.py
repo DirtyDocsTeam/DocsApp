@@ -1794,7 +1794,8 @@ def build_surface(source: SourceConfig, surface: SurfaceConfig, root: Path) -> S
 # ─────────────────────────── рендеринг страниц ───────────────────────────
 #
 # Страницы читают люди, поэтому сверху — что это и откуда данные, дальше рабочие таблицы,
-# а машинные подробности (id рёбер, ограничения разбора) убраны под `<details>`.
+# а машинные подробности (id рёбер, ограничения разбора) и примеры запросов GraphQL убраны
+# под `<details>`: свёрнуты по умолчанию, разворачиваются по клику.
 
 GENERATED_NOTE = (
     "_Собрано из кода автоматически: `make api-docs` (в CI — шаг workflow `docs → wiki`). "
@@ -2057,14 +2058,19 @@ def render_gql_field(field: GqlField, meta: dict, type_map: dict[str, GqlType]) 
     operation = "mutation" if field.kind == "mutation" else "subscription" if field.kind == "subscription" else "query"
     arguments = ", ".join("%s: $%s" % (arg.name, arg.name) for arg in field.args)
     selection = gql_selection(field.returns, type_map) or ["__typename"]
-    lines += ["**Пример запроса:**", "", "```graphql",
-              "%s %s%s {" % (operation, field.name[:1].upper() + field.name[1:],
-                               "(" + variables + ")" if variables else ""),
-              "  %s%s {" % (field.name, "(" + arguments + ")" if arguments else ""),
-              *("    " + item for item in selection), "  }", "}", "```", ""]
+    example = ["```graphql",
+               "%s %s%s {" % (operation, field.name[:1].upper() + field.name[1:],
+                                "(" + variables + ")" if variables else ""),
+               "  %s%s {" % (field.name, "(" + arguments + ")" if arguments else ""),
+               *("    " + item for item in selection), "  }", "}", "```"]
     if field.args:
-        lines += ["```json", "{", *("  \"%s\": %s%s" % (arg.name, gql_example_value(arg.type),
-                  "," if index < len(field.args) - 1 else "") for index, arg in enumerate(field.args)), "}", "```", ""]
+        example += ["", "```json", "{",
+                    *("  \"%s\": %s%s" % (arg.name, gql_example_value(arg.type),
+                      "," if index < len(field.args) - 1 else "")
+                      for index, arg in enumerate(field.args)),
+                    "}", "```"]
+    lines += ["<details>", "<summary>Пример запроса</summary>", "", *example, "",
+              "</details>", ""]
     if field.file:
         name = field.file.rsplit("/", 1)[-1]
         label = "%s:%d" % (name, field.line) if field.line else name
