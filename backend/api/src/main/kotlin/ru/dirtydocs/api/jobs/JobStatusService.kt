@@ -30,7 +30,7 @@ class JobStatusService(
             .fetchOne(JOB_REQUEST.STATUS)
             ?.let(JobStatus::fromDb)
             ?: return false
-        if (status !in allowedTransitions.getValue(current)) return false
+        if (!JobStatusTransitions.canTransition(current, status)) return false
         val changed = dsl.update(JOB_REQUEST)
             .set(JOB_REQUEST.STATUS, status.dbValue)
             .where(JOB_REQUEST.ID.eq(jobId))
@@ -44,7 +44,7 @@ class JobStatusService(
             .where(JOB_REQUEST.ID.eq(jobId))
             .fetchOne()
             ?: return false
-        if (status in terminalStatuses) expireUnusedNonCacheableMedia(jobId)
+        if (status in JobStatusTransitions.terminal) expireUnusedNonCacheableMedia(jobId)
         events.publishJob(
             requireNotNull(job[JOB_REQUEST.USER_ID]),
             JobStatusChange(
@@ -70,28 +70,7 @@ class JobStatusService(
     }
 
     private companion object {
-        val terminalStatuses = setOf(
-            JobStatus.COMPLETED,
-            JobStatus.COMPLETED_WITH_WARNINGS,
-            JobStatus.FAILED,
-            JobStatus.VALIDATION_FAILED,
-            JobStatus.CANCELLED,
-        )
-        val terminalStatusValues = terminalStatuses.map(JobStatus::dbValue)
-        val allowedTransitions = mapOf(
-            JobStatus.WAITING_FOR_MEDIA to setOf(JobStatus.QUEUED, JobStatus.CANCELLED),
-            JobStatus.QUEUED to setOf(JobStatus.PROCESSING, JobStatus.PARSING, JobStatus.RENDERING, JobStatus.BUILDING, JobStatus.VALIDATION) + terminalStatuses,
-            JobStatus.PROCESSING to setOf(JobStatus.PARSING, JobStatus.RENDERING, JobStatus.BUILDING, JobStatus.VALIDATION) + terminalStatuses,
-            JobStatus.PARSING to setOf(JobStatus.RENDERING, JobStatus.BUILDING, JobStatus.VALIDATION) + terminalStatuses,
-            JobStatus.RENDERING to setOf(JobStatus.BUILDING, JobStatus.VALIDATION) + terminalStatuses,
-            JobStatus.BUILDING to setOf(JobStatus.VALIDATION) + terminalStatuses,
-            JobStatus.VALIDATION to terminalStatuses,
-            JobStatus.COMPLETED to emptySet(),
-            JobStatus.COMPLETED_WITH_WARNINGS to emptySet(),
-            JobStatus.FAILED to emptySet(),
-            JobStatus.VALIDATION_FAILED to emptySet(),
-            JobStatus.CANCELLED to emptySet(),
-        )
+        val terminalStatusValues = JobStatusTransitions.terminal.map(JobStatus::dbValue)
         val deletedAt = DSL.field(DSL.name("job_request", "deleted_at"), OffsetDateTime::class.java)
     }
 }

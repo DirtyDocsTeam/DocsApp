@@ -1,7 +1,7 @@
 quarkus:
   http:
     auth:
-      proactive: true
+      proactive: false
   hibernate-orm:
     database:
       generation: validate
@@ -27,3 +27,5 @@ quarkus:
     password: ${DB_PASSWORD:dirtydocs}
     jdbc:
       url: ${DB_URL:jdbc:postgresql://localhost:5432/dirtydocs}
+  jooq:
+    dialect: POSTGRES

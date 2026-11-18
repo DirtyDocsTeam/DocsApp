@@ -1,12 +1,12 @@
 package ru.dirtydocs.api.subscriptions
 
-import io.smallrye.mutiny.Multi
 import jakarta.enterprise.inject.Instance
 import jakarta.ws.rs.ClientErrorException
 import jakarta.ws.rs.core.Response
 import io.smallrye.graphql.api.Subscription
 import org.eclipse.microprofile.graphql.Description
 import org.eclipse.microprofile.graphql.GraphQLApi
+import org.reactivestreams.Publisher
 import ru.dirtydocs.api.auth.ApiTokenAccessAuthorizer
 import ru.dirtydocs.data.ProjectionContext
 
@@ -19,14 +19,14 @@ class SubscriptionApi(
 ) {
     @Subscription
     @Description("Subscribe to a current user's job status changes")
-    fun jobStatus(jobId: String): Multi<JobStatusChange> {
+    fun jobStatus(jobId: String): Publisher<JobStatusChange> {
         tokenAccess.requireRead { it.jobs }
         return events.jobChangesFor(requireViewer(), jobId)
     }
 
     @Subscription
     @Description("Subscribe to changes of visible themes")
-    fun themeChanges(): Multi<ThemeChange> {
+    fun themeChanges(): Publisher<ThemeChange> {
         tokenAccess.requireRead { it.themes }
         return events.themeChangesFor(requireViewer())
     }

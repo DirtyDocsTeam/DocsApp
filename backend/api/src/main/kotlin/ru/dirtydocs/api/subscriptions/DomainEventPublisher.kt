@@ -3,6 +3,9 @@ package ru.dirtydocs.api.subscriptions
 import io.smallrye.mutiny.Multi
 import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor
 import jakarta.enterprise.context.ApplicationScoped
+import org.reactivestreams.Publisher
+import org.reactivestreams.Subscriber
+import org.reactivestreams.Subscription
 import ru.dirtydocs.api.jobs.requests.JobStatus
 import java.time.OffsetDateTime
 
@@ -39,14 +42,31 @@ class DomainEventPublisher {
         themeChanges.onNext(OwnedThemeChange(userId, isPublic, change))
     }
 
-    fun jobChangesFor(userId: Long, jobId: String): Multi<JobStatusChange> = jobChanges
+    fun jobChangesFor(userId: Long, jobId: String): Publisher<JobStatusChange> = jobChanges
         .select().where { event -> event.userId == userId && event.change.jobId == jobId }
         .map { it.change }
+        .asReactiveStreamsPublisher()
 
-    fun themeChangesFor(userId: Long): Multi<ThemeChange> = themeChanges
+    fun themeChangesFor(userId: Long): Publisher<ThemeChange> = themeChanges
         .select().where { event -> event.userId == userId || event.isPublic }
         .map { it.change }
+        .asReactiveStreamsPublisher()
 
     private data class OwnedJobStatusChange(val userId: Long, val change: JobStatusChange)
     private data class OwnedThemeChange(val userId: Long, val isPublic: Boolean, val change: ThemeChange)
+}
+
+private fun <T> Multi<T>.asReactiveStreamsPublisher(): Publisher<T> = Publisher { subscriber ->
+    subscribe().withSubscriber(object : java.util.concurrent.Flow.Subscriber<T> {
+        override fun onSubscribe(subscription: java.util.concurrent.Flow.Subscription) {
+            subscriber.onSubscribe(object : Subscription {
+                override fun request(n: Long) = subscription.request(n)
+                override fun cancel() = subscription.cancel()
+            })
+        }
+
+        override fun onNext(item: T) = subscriber.onNext(item)
+        override fun onError(error: Throwable) = subscriber.onError(error)
+        override fun onComplete() = subscriber.onComplete()
+    })
 }
