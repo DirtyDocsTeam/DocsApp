@@ -1,91 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="2011" height="1004" viewBox="-40 -216.5 2011.75 1004.5" font-family="ui-sans-serif, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="2629" height="2089" viewBox="-170.25 -300.5 2629 2089" font-family="ui-sans-serif, system-ui, sans-serif">
 <defs><marker id="many-right" markerWidth="12" markerHeight="12" refX="8" refY="6" orient="0" overflow="visible"><path d="M0 6 L8 1 M0 6 L8 6 M0 6 L8 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker><marker id="many-left" markerWidth="12" markerHeight="12" refX="0" refY="6" orient="0" overflow="visible"><path d="M8 6 L0 1 M8 6 L0 6 M8 6 L0 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker><marker id="zero-many-right" markerWidth="18" markerHeight="12" refX="10" refY="6" orient="0" overflow="visible"><circle cx="5" cy="6" r="2.5" fill="#0e1116" stroke="#5d6b7d" stroke-width="1.5"/><path d="M8 6 L15 1 M8 6 L15 6 M8 6 L15 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker><marker id="zero-many-left" markerWidth="18" markerHeight="12" refX="0" refY="6" orient="0" overflow="visible"><circle cx="10" cy="6" r="2.5" fill="#0e1116" stroke="#5d6b7d" stroke-width="1.5"/><path d="M7 6 L0 1 M7 6 L0 6 M7 6 L0 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker></defs>
-<path class="relationship" d="M 227 73 C 275 73, 305 47, 353 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>job_events.job_id → job_request.id</title></path>
-<path class="relationship" d="M 287.25 262.25 C 335.25 262.25, 305 47, 353 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>job_media.request_id → job_request.id</title></path>
-<path class="relationship" d="M 706 402.5 C 658 402.5, 656 47, 608 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_result.request_id → job_request.id</title></path>
-<path class="relationship" d="M 287.25 288.25 C 335.25 288.25, 305 527, 353 527" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>job_media.media_id → media.id</title></path>
-<path class="relationship" d="M 353 125 C 257 125, 690 527, 594 527" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_request.processing_media_id → media.id</title></path>
-<path class="relationship" d="M 706 428.5 C 658 428.5, 642 527, 594 527" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_result.result_media_id → media.id</title></path>
-<path class="relationship" d="M 1321 527 C 1369 527, 1364 527, 1412 527" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>theme_collection_themes.theme_collection_id → theme_collections.id</title></path>
-<path class="relationship" d="M 1676.75 288.25 C 1580.75 288.25, 1798 527, 1702 527" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>user_theme_collections.theme_collection_id → theme_collections.id</title></path>
-<path class="relationship" d="M 608 281 C 751.15 281, 1180.6 223.5, 1323.75 223.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>job_request.theme_id → themes.id</title></path>
-<path class="relationship" d="M 1251 337.75 C 1299 337.75, 1275.75 223.5, 1323.75 223.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>styles.theme_id → themes.id</title></path>
-<path class="relationship" d="M 1321 553 C 1369 553, 1275.75 223.5, 1323.75 223.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>theme_collection_themes.theme_id → themes.id</title></path>
-<path class="relationship" d="M 940 -103.5 C 1004.05 -103.5, 1196.2 -129.5, 1260.25 -129.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>api_tokens.user_id → users.id</title></path>
-<path class="relationship" d="M 608 255 C 738.45 255, 1129.8 -129.5, 1260.25 -129.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>job_request.user_id → users.id</title></path>
-<path class="relationship" d="M 1676.75 262.25 C 1628.75 262.25, 1605.25 -129.5, 1557.25 -129.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>user_theme_collections.user_id → users.id</title></path>
-<g transform="translate(0 0)"><rect width="227" height="164" rx="10" fill="#1b212b" stroke="#2b333f"/>
-<path d="M0 34 V10 a10 10 0 0 1 10 -10 H217 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
-<text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">job_events</text>
-<text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
-<text x="25" y="47" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
-<text x="70" y="47" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">id</text>
-<text x="215" y="47" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
-<rect x="1" y="60" width="225" height="26" fill="#1e2530"/>
-<text x="10" y="73" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
-<text x="39" y="73" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
-<text x="70" y="73" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">job_id</text>
-<text x="215" y="73" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
-<text x="70" y="99" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">action</text>
-<text x="215" y="99" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(32)</text>
-<rect x="1" y="112" width="225" height="26" fill="#1e2530"/>
-<text x="70" y="125" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">data</text>
-<text x="215" y="125" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">jsonb</text>
-<text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">created_at</text>
-<text x="215" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
-</g>
-<g transform="translate(353 0)"><rect width="255" height="424" rx="10" fill="#1b212b" stroke="#2b333f"/>
-<path d="M0 34 V10 a10 10 0 0 1 10 -10 H245 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
-<text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">job_request</text>
-<text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
-<text x="25" y="47" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
-<text x="70" y="47" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">id</text>
-<text x="243" y="47" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
-<rect x="1" y="60" width="253" height="26" fill="#1e2530"/>
-<text x="10" y="73" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
-<text x="39" y="73" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
-<text x="70" y="73" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">parent_request_id</text>
-<text x="243" y="73" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
-<text x="25" y="99" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
-<text x="39" y="99" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
-<text x="70" y="99" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">external_id</text>
-<text x="243" y="99" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(64)</text>
-<rect x="1" y="112" width="253" height="26" fill="#1e2530"/>
-<text x="10" y="125" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
-<text x="39" y="125" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
-<text x="70" y="125" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">processing_media_id</text>
-<text x="243" y="125" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
-<text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">input_type</text>
-<text x="243" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(4)</text>
-<rect x="1" y="164" width="253" height="26" fill="#1e2530"/>
-<text x="70" y="177" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">output_type</text>
-<text x="243" y="177" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(4)</text>
-<text x="70" y="203" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">type</text>
-<text x="243" y="203" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(32)</text>
-<rect x="1" y="216" width="253" height="26" fill="#1e2530"/>
-<text x="70" y="229" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">status</text>
-<text x="243" y="229" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(32)</text>
-<text x="10" y="255" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
-<text x="70" y="255" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">user_id</text>
-<text x="243" y="255" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
-<rect x="1" y="268" width="253" height="26" fill="#1e2530"/>
-<text x="10" y="281" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
-<text x="39" y="281" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
-<text x="70" y="281" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">theme_id</text>
-<text x="243" y="281" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
-<text x="70" y="307" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">parameters</text>
-<text x="243" y="307" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">jsonb</text>
-<rect x="1" y="320" width="253" height="26" fill="#1e2530"/>
-<text x="70" y="333" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">created_at</text>
-<text x="243" y="333" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
-<text x="70" y="359" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">updated_at</text>
-<text x="243" y="359" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
-<text x="25" y="385" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">IDX</text>
-<text x="50" y="385" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">user_id, status</text>
-<text x="25" y="411" dominant-baseline="middle" font-size="8" font-weight="700" fill="#d98cff">TRG</text>
-<text x="50" y="411" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">job_request_set_updated_at</text>
-</g>
-<g transform="translate(706 -176.5)"><rect width="234" height="190" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<path class="relationship" d="M 911.75 651.5 C 796.35 651.5, 450.15 422.5, 334.75 422.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_events.job_id → job_request.id</title></path>
+<path class="relationship" d="M 390.75 839.25 C 342.75 839.25, 382.75 422.5, 334.75 422.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_expected_media.request_id → job_request.id</title></path>
+<path class="relationship" d="M 1432.75 1131.25 C 1213.15 1131.25, 554.35 422.5, 334.75 422.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_media.request_id → job_request.id</title></path>
+<path class="relationship" d="M 1635.75 604.75 C 1375.55 604.75, 594.95 422.5, 334.75 422.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_result.request_id → job_request.id</title></path>
+<path class="relationship" d="M 701.75 969.25 C 769.8 969.25, 973.95 943.5, 1042 943.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#zero-many-left)"><title>job_expected_media.media_id → media.id</title></path>
+<path class="relationship" d="M 1432.75 1157.25 C 1384.75 1157.25, 1415 943.5, 1367 943.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_media.media_id → media.id</title></path>
+<path class="relationship" d="M 334.75 500.5 C 476.2 500.5, 900.55 943.5, 1042 943.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#zero-many-left)"><title>job_request.processing_media_id → media.id</title></path>
+<path class="relationship" d="M 1635.75 630.75 C 1582 630.75, 1420.75 943.5, 1367 943.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_result.result_media_id → media.id</title></path>
+<path class="relationship" d="M 2156.75 813.25 C 1977.25 813.25, 1438.75 1579.5, 1259.25 1579.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>theme_collection_themes.theme_collection_id → theme_collections.id</title></path>
+<path class="relationship" d="M 906.25 1345 C 954.25 1345, 921.25 1579.5, 969.25 1579.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>user_theme_collections.theme_collection_id → theme_collections.id</title></path>
+<path class="relationship" d="M 334.75 656.5 C 594.95 656.5, 1375.55 47, 1635.75 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>job_request.theme_id → themes.id</title></path>
+<path class="relationship" d="M 1567.25 333.5 C 1615.25 333.5, 1587.75 47, 1635.75 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>styles.theme_id → themes.id</title></path>
+<path class="relationship" d="M 2156.75 839.25 C 2097.95 839.25, 1921.55 47, 1862.75 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>theme_collection_themes.theme_id → themes.id</title></path>
+<path class="relationship" d="M 234 73 C 291.4 73, 463.6 47, 521 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>api_tokens.user_id → users.id</title></path>
+<path class="relationship" d="M 911.75 -135.5 C 863.75 -135.5, 866 47, 818 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#zero-many-right)"><title>domain_event_outbox.owner_user_id → users.id</title></path>
+<path class="relationship" d="M 390.75 865.25 C 294.75 865.25, 425 47, 521 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_expected_media.user_id → users.id</title></path>
+<path class="relationship" d="M 334.75 630.5 C 382.75 630.5, 473 47, 521 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>job_request.user_id → users.id</title></path>
+<path class="relationship" d="M 1635.75 203 C 1472.2 203, 981.55 47, 818 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#zero-many-right)"><title>themes.owner_user_id → users.id</title></path>
+<path class="relationship" d="M 906.25 1319 C 1002.25 1319, 425 47, 521 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>user_theme_collections.user_id → users.id</title></path>
+<g transform="translate(0 0)"><rect width="234" height="190" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H224 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">api_tokens</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
@@ -110,50 +44,7 @@
 <text x="70" y="177" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">access</text>
 <text x="222" y="177" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">jsonb</text>
 </g>
-<g transform="translate(1059 264.75)"><rect width="192" height="164" rx="10" fill="#1b212b" stroke="#2b333f"/>
-<path d="M0 34 V10 a10 10 0 0 1 10 -10 H182 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
-<text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">styles</text>
-<text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
-<text x="25" y="47" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
-<text x="70" y="47" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">id</text>
-<text x="180" y="47" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
-<rect x="1" y="60" width="190" height="26" fill="#1e2530"/>
-<text x="10" y="73" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
-<text x="39" y="73" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
-<text x="70" y="73" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">theme_id</text>
-<text x="180" y="73" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
-<text x="70" y="99" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">type</text>
-<text x="180" y="99" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(32)</text>
-<rect x="1" y="112" width="190" height="26" fill="#1e2530"/>
-<text x="70" y="125" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">example_text</text>
-<text x="180" y="125" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">text</text>
-<text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">data</text>
-<text x="180" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">jsonb</text>
-</g>
-<g transform="translate(1323.75 176.5)"><rect width="227" height="216" rx="10" fill="#1b212b" stroke="#2b333f"/>
-<path d="M0 34 V10 a10 10 0 0 1 10 -10 H217 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
-<text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">themes</text>
-<text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
-<text x="25" y="47" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
-<text x="70" y="47" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">id</text>
-<text x="215" y="47" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
-<rect x="1" y="60" width="225" height="26" fill="#1e2530"/>
-<text x="70" y="73" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">name</text>
-<text x="215" y="73" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">text</text>
-<text x="70" y="99" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">is_public</text>
-<text x="215" y="99" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">boolean</text>
-<rect x="1" y="112" width="225" height="26" fill="#1e2530"/>
-<text x="70" y="125" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">parameters</text>
-<text x="215" y="125" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">jsonb</text>
-<text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">created_at</text>
-<text x="215" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
-<rect x="1" y="164" width="225" height="26" fill="#1e2530"/>
-<text x="70" y="177" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">updated_at</text>
-<text x="215" y="177" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
-<text x="25" y="203" dominant-baseline="middle" font-size="8" font-weight="700" fill="#d98cff">TRG</text>
-<text x="50" y="203" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">themes_set_updated_at</text>
-</g>
-<g transform="translate(1260.25 -176.5)"><rect width="297" height="268" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<g transform="translate(521 0)"><rect width="297" height="268" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H287 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">users</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
@@ -161,6 +52,8 @@
 <text x="70" y="47" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">id</text>
 <text x="285" y="47" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
 <rect x="1" y="60" width="295" height="26" fill="#1e2530"/>
+<text x="25" y="73" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
+<text x="39" y="73" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
 <text x="70" y="73" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">oidc_token</text>
 <text x="285" y="73" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">text</text>
 <text x="25" y="99" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
@@ -183,7 +76,259 @@
 <text x="25" y="255" dominant-baseline="middle" font-size="8" font-weight="700" fill="#d98cff">TRG</text>
 <text x="50" y="255" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">users_set_updated_at</text>
 </g>
-<g transform="translate(88.25 215.25)"><rect width="199" height="138" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<g transform="translate(911.75 -260.5)"><rect width="269" height="268" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<path d="M0 34 V10 a10 10 0 0 1 10 -10 H259 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
+<text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">domain_event_outbox</text>
+<text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
+<text x="25" y="47" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
+<text x="39" y="47" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
+<text x="70" y="47" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">id</text>
+<text x="257" y="47" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<rect x="1" y="60" width="267" height="26" fill="#1e2530"/>
+<text x="70" y="73" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">aggregate_type</text>
+<text x="257" y="73" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(64)</text>
+<text x="70" y="99" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">aggregate_id</text>
+<text x="257" y="99" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<rect x="1" y="112" width="267" height="26" fill="#1e2530"/>
+<text x="10" y="125" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
+<text x="70" y="125" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">owner_user_id</text>
+<text x="257" y="125" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">event_type</text>
+<text x="257" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(64)</text>
+<rect x="1" y="164" width="267" height="26" fill="#1e2530"/>
+<text x="70" y="177" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">schema_version</text>
+<text x="257" y="177" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">integer</text>
+<text x="70" y="203" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">created_at</text>
+<text x="257" y="203" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<rect x="1" y="216" width="267" height="26" fill="#1e2530"/>
+<text x="70" y="229" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">delivered_at</text>
+<text x="257" y="229" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<text x="25" y="255" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">IDX</text>
+<text x="50" y="255" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">id WHERE delivered_at IS NULL</text>
+</g>
+<g transform="translate(911.75 578.5)"><rect width="227" height="164" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<path d="M0 34 V10 a10 10 0 0 1 10 -10 H217 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
+<text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">job_events</text>
+<text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
+<text x="25" y="47" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
+<text x="70" y="47" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">id</text>
+<text x="215" y="47" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<rect x="1" y="60" width="225" height="26" fill="#1e2530"/>
+<text x="10" y="73" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
+<text x="39" y="73" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
+<text x="70" y="73" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">job_id</text>
+<text x="215" y="73" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<text x="70" y="99" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">action</text>
+<text x="215" y="99" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(32)</text>
+<rect x="1" y="112" width="225" height="26" fill="#1e2530"/>
+<text x="70" y="125" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">data</text>
+<text x="215" y="125" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">jsonb</text>
+<text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">created_at</text>
+<text x="215" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+</g>
+<g transform="translate(1375.25 260.5)"><rect width="192" height="164" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<path d="M0 34 V10 a10 10 0 0 1 10 -10 H182 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
+<text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">styles</text>
+<text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
+<text x="25" y="47" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
+<text x="70" y="47" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">id</text>
+<text x="180" y="47" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<rect x="1" y="60" width="190" height="26" fill="#1e2530"/>
+<text x="10" y="73" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
+<text x="39" y="73" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
+<text x="70" y="73" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">theme_id</text>
+<text x="180" y="73" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<text x="70" y="99" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">type</text>
+<text x="180" y="99" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(32)</text>
+<rect x="1" y="112" width="190" height="26" fill="#1e2530"/>
+<text x="70" y="125" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">example_text</text>
+<text x="180" y="125" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">text</text>
+<text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">data</text>
+<text x="180" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">jsonb</text>
+</g>
+<g transform="translate(1635.75 0)"><rect width="227" height="268" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<path d="M0 34 V10 a10 10 0 0 1 10 -10 H217 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
+<text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">themes</text>
+<text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
+<text x="25" y="47" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
+<text x="70" y="47" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">id</text>
+<text x="215" y="47" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<rect x="1" y="60" width="225" height="26" fill="#1e2530"/>
+<text x="70" y="73" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">name</text>
+<text x="215" y="73" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">text</text>
+<text x="70" y="99" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">is_public</text>
+<text x="215" y="99" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">boolean</text>
+<rect x="1" y="112" width="225" height="26" fill="#1e2530"/>
+<text x="70" y="125" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">parameters</text>
+<text x="215" y="125" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">jsonb</text>
+<text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">created_at</text>
+<text x="215" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<rect x="1" y="164" width="225" height="26" fill="#1e2530"/>
+<text x="70" y="177" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">updated_at</text>
+<text x="215" y="177" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<text x="10" y="203" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
+<text x="70" y="203" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">owner_user_id</text>
+<text x="215" y="203" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<rect x="1" y="216" width="225" height="26" fill="#1e2530"/>
+<text x="70" y="229" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">deleted_at</text>
+<text x="215" y="229" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<text x="25" y="255" dominant-baseline="middle" font-size="8" font-weight="700" fill="#d98cff">TRG</text>
+<text x="50" y="255" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">themes_set_updated_at</text>
+</g>
+<g transform="translate(-130.25 375.5)"><rect width="465" height="580" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<path d="M0 34 V10 a10 10 0 0 1 10 -10 H455 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
+<text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">job_request</text>
+<text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
+<text x="25" y="47" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
+<text x="70" y="47" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">id</text>
+<text x="453" y="47" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<rect x="1" y="60" width="463" height="26" fill="#1e2530"/>
+<text x="10" y="73" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
+<text x="39" y="73" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
+<text x="70" y="73" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">parent_request_id</text>
+<text x="453" y="73" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<text x="25" y="99" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
+<text x="39" y="99" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
+<text x="70" y="99" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">external_id</text>
+<text x="453" y="99" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(64)</text>
+<rect x="1" y="112" width="463" height="26" fill="#1e2530"/>
+<text x="10" y="125" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
+<text x="39" y="125" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
+<text x="70" y="125" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">processing_media_id</text>
+<text x="453" y="125" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">input_type</text>
+<text x="453" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(4)</text>
+<rect x="1" y="164" width="463" height="26" fill="#1e2530"/>
+<text x="70" y="177" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">output_type</text>
+<text x="453" y="177" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(4)</text>
+<text x="70" y="203" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">type</text>
+<text x="453" y="203" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(32)</text>
+<rect x="1" y="216" width="463" height="26" fill="#1e2530"/>
+<text x="70" y="229" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">status</text>
+<text x="453" y="229" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(32)</text>
+<text x="10" y="255" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
+<text x="70" y="255" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">user_id</text>
+<text x="453" y="255" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<rect x="1" y="268" width="463" height="26" fill="#1e2530"/>
+<text x="10" y="281" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
+<text x="39" y="281" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
+<text x="70" y="281" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">theme_id</text>
+<text x="453" y="281" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<text x="70" y="307" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">parameters</text>
+<text x="453" y="307" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">jsonb</text>
+<rect x="1" y="320" width="463" height="26" fill="#1e2530"/>
+<text x="70" y="333" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">created_at</text>
+<text x="453" y="333" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<text x="70" y="359" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">updated_at</text>
+<text x="453" y="359" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<rect x="1" y="372" width="463" height="26" fill="#1e2530"/>
+<text x="70" y="385" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">deleted_at</text>
+<text x="453" y="385" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<text x="70" y="411" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">idempotency_key</text>
+<text x="453" y="411" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(128)</text>
+<rect x="1" y="424" width="463" height="26" fill="#1e2530"/>
+<text x="70" y="437" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">request_fingerprint</text>
+<text x="453" y="437" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(64)</text>
+<text x="70" y="463" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">delivery_key</text>
+<text x="453" y="463" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(128)</text>
+<rect x="1" y="476" width="463" height="26" fill="#1e2530"/>
+<text x="70" y="489" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">delivery_attempts</text>
+<text x="453" y="489" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">integer</text>
+<text x="25" y="515" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">IDX</text>
+<text x="50" y="515" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">user_id, status</text>
+<text x="25" y="541" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
+<text x="50" y="541" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">user_id, idempotency_key WHERE idempotency_key IS NOT NULL</text>
+<text x="25" y="567" dominant-baseline="middle" font-size="8" font-weight="700" fill="#d98cff">TRG</text>
+<text x="50" y="567" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">job_request_set_updated_at</text>
+</g>
+<g transform="translate(390.75 766.25)"><rect width="311" height="424" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<path d="M0 34 V10 a10 10 0 0 1 10 -10 H301 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
+<text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">job_expected_media</text>
+<text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
+<text x="25" y="47" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
+<text x="70" y="47" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">id</text>
+<text x="299" y="47" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<rect x="1" y="60" width="309" height="26" fill="#1e2530"/>
+<text x="10" y="73" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
+<text x="70" y="73" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">request_id</text>
+<text x="299" y="73" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<text x="10" y="99" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
+<text x="70" y="99" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">user_id</text>
+<text x="299" y="99" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<rect x="1" y="112" width="309" height="26" fill="#1e2530"/>
+<text x="70" y="125" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">file_hash</text>
+<text x="299" y="125" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(128)</text>
+<text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">role</text>
+<text x="299" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(32)</text>
+<rect x="1" y="164" width="309" height="26" fill="#1e2530"/>
+<text x="70" y="177" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">state</text>
+<text x="299" y="177" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(32)</text>
+<text x="10" y="203" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
+<text x="70" y="203" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">media_id</text>
+<text x="299" y="203" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<rect x="1" y="216" width="309" height="26" fill="#1e2530"/>
+<text x="39" y="229" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
+<text x="70" y="229" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">expires_at</text>
+<text x="299" y="229" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<text x="70" y="255" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">receipt_key</text>
+<text x="299" y="255" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(128)</text>
+<rect x="1" y="268" width="309" height="26" fill="#1e2530"/>
+<text x="70" y="281" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">created_at</text>
+<text x="299" y="281" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<text x="70" y="307" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">updated_at</text>
+<text x="299" y="307" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<text x="25" y="333" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
+<text x="50" y="333" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">request_id, file_hash, role</text>
+<text x="25" y="359" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">IDX</text>
+<text x="50" y="359" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">user_id, file_hash, state</text>
+<text x="25" y="385" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">IDX</text>
+<text x="50" y="385" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">expires_at WHERE state = &#x27;expected&#x27;</text>
+<text x="25" y="411" dominant-baseline="middle" font-size="8" font-weight="700" fill="#d98cff">TRG</text>
+<text x="50" y="411" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">job_expected_media_set_updated_at</text>
+</g>
+<g transform="translate(1042 896.5)"><rect width="325" height="398" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<path d="M0 34 V10 a10 10 0 0 1 10 -10 H315 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
+<text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">media</text>
+<text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
+<text x="25" y="47" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
+<text x="70" y="47" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">id</text>
+<text x="313" y="47" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<rect x="1" y="60" width="323" height="26" fill="#1e2530"/>
+<text x="70" y="73" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">is_non_cacheable</text>
+<text x="313" y="73" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">boolean</text>
+<text x="70" y="99" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">mime_type</text>
+<text x="313" y="99" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">text</text>
+<rect x="1" y="112" width="323" height="26" fill="#1e2530"/>
+<text x="70" y="125" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">storage_path</text>
+<text x="313" y="125" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">text</text>
+<text x="39" y="151" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
+<text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">file_hash</text>
+<text x="313" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(128)</text>
+<rect x="1" y="164" width="323" height="26" fill="#1e2530"/>
+<text x="70" y="177" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">created_at</text>
+<text x="313" y="177" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<text x="70" y="203" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">updated_at</text>
+<text x="313" y="203" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<rect x="1" y="216" width="323" height="26" fill="#1e2530"/>
+<text x="39" y="229" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
+<text x="70" y="229" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">delete_at</text>
+<text x="313" y="229" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<text x="70" y="255" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">deletion_failed_at</text>
+<text x="313" y="255" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<rect x="1" y="268" width="323" height="26" fill="#1e2530"/>
+<text x="70" y="281" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">deletion_attempts</text>
+<text x="313" y="281" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">integer</text>
+<text x="70" y="307" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">eviction_started_at</text>
+<text x="313" y="307" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<rect x="1" y="320" width="323" height="26" fill="#1e2530"/>
+<text x="70" y="333" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">evicted_at</text>
+<text x="313" y="333" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<text x="25" y="359" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">IDX</text>
+<text x="50" y="359" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">delete_at WHERE delete_at IS NOT NULL</text>
+<text x="25" y="385" dominant-baseline="middle" font-size="8" font-weight="700" fill="#d98cff">TRG</text>
+<text x="50" y="385" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">media_set_updated_at</text>
+</g>
+<g transform="translate(1432.75 1084.25)"><rect width="199" height="138" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H189 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">job_media</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
@@ -199,36 +344,7 @@
 <text x="25" y="125" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">PK</text>
 <text x="50" y="125" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">request_id, media_id</text>
 </g>
-<g transform="translate(353 480)"><rect width="241" height="268" rx="10" fill="#1b212b" stroke="#2b333f"/>
-<path d="M0 34 V10 a10 10 0 0 1 10 -10 H231 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
-<text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">media</text>
-<text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
-<text x="25" y="47" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
-<text x="70" y="47" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">id</text>
-<text x="229" y="47" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
-<rect x="1" y="60" width="239" height="26" fill="#1e2530"/>
-<text x="70" y="73" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">is_non_cacheable</text>
-<text x="229" y="73" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">boolean</text>
-<text x="70" y="99" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">mime_type</text>
-<text x="229" y="99" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">text</text>
-<rect x="1" y="112" width="239" height="26" fill="#1e2530"/>
-<text x="70" y="125" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">storage_path</text>
-<text x="229" y="125" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">text</text>
-<text x="39" y="151" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
-<text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">file_hash</text>
-<text x="229" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(128)</text>
-<rect x="1" y="164" width="239" height="26" fill="#1e2530"/>
-<text x="70" y="177" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">created_at</text>
-<text x="229" y="177" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
-<text x="70" y="203" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">updated_at</text>
-<text x="229" y="203" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
-<rect x="1" y="216" width="239" height="26" fill="#1e2530"/>
-<text x="70" y="229" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">delete_at</text>
-<text x="229" y="229" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
-<text x="25" y="255" dominant-baseline="middle" font-size="8" font-weight="700" fill="#d98cff">TRG</text>
-<text x="50" y="255" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">media_set_updated_at</text>
-</g>
-<g transform="translate(706 303.5)"><rect width="241" height="164" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<g transform="translate(1635.75 505.75)"><rect width="241" height="164" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H231 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">job_result</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
@@ -251,7 +367,7 @@
 <text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">completed_at</text>
 <text x="229" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
 </g>
-<g transform="translate(1059 480)"><rect width="262" height="112" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<g transform="translate(2156.75 766.25)"><rect width="262" height="112" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H252 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">theme_collection_themes</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
@@ -265,7 +381,7 @@
 <text x="25" y="99" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">PK</text>
 <text x="50" y="99" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">theme_collection_id, theme_id</text>
 </g>
-<g transform="translate(1412 480)"><rect width="290" height="216" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<g transform="translate(969.25 1532.5)"><rect width="290" height="216" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H280 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">theme_collections</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
@@ -288,7 +404,7 @@
 <text x="25" y="203" dominant-baseline="middle" font-size="8" font-weight="700" fill="#d98cff">TRG</text>
 <text x="50" y="203" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">theme_collections_set_updated_at</text>
 </g>
-<g transform="translate(1676.75 215.25)"><rect width="255" height="138" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<g transform="translate(651.25 1272)"><rect width="255" height="138" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H245 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">user_theme_collections</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>

@@ -286,7 +286,7 @@ class OptimizerTest(unittest.TestCase):
         initial=d.layout_tables(tables,options=LayoutOptions(steps=0,routing_passes=0))
         anchor=next(item for item in initial if item.table.name=='users')
         fixed={'users':(anchor.rect.x,anchor.rect.y)}
-        changed=optimize_grid(initial,d.relationships(tables),LayoutOptions(steps=60),fixed)
+        changed=optimize_grid(initial,d.relationships(tables),LayoutOptions(steps=12),fixed)
         self.assertEqual(anchor.rect,next(i.rect for i in changed if i.table.name=='users'))
         self.assertFalse(any(d.overlaps(a.rect,b.rect) for i,a in enumerate(changed) for b in changed[i+1:]))
 

@@ -16,11 +16,15 @@
 | Ребёнок | Колонка | Родитель | Колонка | Обязательная |
 |---|---|---|---|---|
 | `api_tokens` | `user_id` | `users` | `id` | да |
+| `domain_event_outbox` | `owner_user_id` | `users` | `id` | нет |
 | `job_events` | `job_id` | `job_request` | `id` | да |
+| `job_expected_media` | `request_id` | `job_request` | `id` | да |
+| `job_expected_media` | `user_id` | `users` | `id` | да |
+| `job_expected_media` | `media_id` | `media` | `id` | нет |
 | `job_media` | `request_id` | `job_request` | `id` | да |
 | `job_media` | `media_id` | `media` | `id` | да |
 | `job_request` | `parent_request_id` | `job_request` | `id` | нет |
-| `job_request` | `processing_media_id` | `media` | `id` | да |
+| `job_request` | `processing_media_id` | `media` | `id` | нет |
 | `job_request` | `user_id` | `users` | `id` | да |
 | `job_request` | `theme_id` | `themes` | `id` | да |
 | `job_result` | `request_id` | `job_request` | `id` | да |
@@ -28,5 +32,6 @@
 | `styles` | `theme_id` | `themes` | `id` | да |
 | `theme_collection_themes` | `theme_collection_id` | `theme_collections` | `id` | да |
 | `theme_collection_themes` | `theme_id` | `themes` | `id` | да |
+| `themes` | `owner_user_id` | `users` | `id` | нет |
 | `user_theme_collections` | `user_id` | `users` | `id` | да |
 | `user_theme_collections` | `theme_collection_id` | `theme_collections` | `id` | да |
