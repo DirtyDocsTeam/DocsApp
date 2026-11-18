@@ -514,11 +514,16 @@ def legacy_relationship_routes(positioned: list[PositionedTable]) -> list[Relati
     return routes
 
 
-def compact_orthogonal_points(route: RelationshipRoute) -> tuple[tuple[float, float], ...]:
-    """Use the FK port's outward corridor instead of a global midpoint."""
+def compact_orthogonal_points(route: RelationshipRoute, positioned: list[PositionedTable]) -> tuple[tuple[float, float], ...]:
+    """Choose a balanced corridor for separate cards and a port corridor for overlaps."""
     if route.start[1] == route.end[1]:
         return route.start,route.end
-    corridor_x=route.start_control[0]
+    by_name={item.table.name:item for item in positioned}
+    child=by_name[route.relationship.child].rect
+    parent=by_name[route.relationship.parent].rect
+    horizontally_separated=(child.x+child.width <= parent.x or parent.x+parent.width <= child.x)
+    corridor_x=((route.start[0]+route.end[0])/2 if horizontally_separated
+                else route.start_control[0])
     return route.start,(corridor_x,route.start[1]),(corridor_x,route.end[1]),route.end
 
 
@@ -546,7 +551,7 @@ def relationship_routes(positioned: list[PositionedTable], routing_passes: int =
     if len(positioned) <= 24:
         routes=[]
         for route in legacy_relationship_routes(positioned):
-            points=compact_orthogonal_points(route)
+            points=compact_orthogonal_points(route,positioned)
             routes.append(replace(route,waypoints=points,svg_path=rounded_orthogonal_path(points,{})))
         routes.extend(self_relationship_routes(positioned))
         return routes
@@ -666,7 +671,7 @@ def layout_variant(tables: list[Table], seed: str | None = None,
     def candidate_score(items: list[PositionedTable]) -> LayoutScore:
         routes=[]
         for route in legacy_relationship_routes(items):
-            points=compact_orthogonal_points(route)
+            points=compact_orthogonal_points(route,items)
             routes.append(RelationshipRoute(route.relationship,points[0],points[1],points[-2],points[-1],
                                            route.child_side,route.parent_side,points))
         return score_layout(items,routes)

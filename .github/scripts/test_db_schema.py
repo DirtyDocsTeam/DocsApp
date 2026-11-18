@@ -90,6 +90,16 @@ class SvgErdLayoutTest(unittest.TestCase):
         corridor = max(abs(point[0] - route.start[0]) for point in route.waypoints)
         self.assertGreaterEqual(corridor, db_schema.VERTICAL_CONNECTOR_CONTROL_OFFSET)
 
+    def test_horizontally_separated_route_uses_a_balanced_corridor(self) -> None:
+        parent = db_schema.Table("parent", [db_schema.Column("id", "bigint", primary=True)])
+        child = db_schema.Table("child", [db_schema.Column("parent_id", "bigint", reference=("parent", "id"))])
+        positioned = [
+            db_schema.PositionedTable(child, db_schema.Rect(0, 0, 180, 60)),
+            db_schema.PositionedTable(parent, db_schema.Rect(300, 120, 180, 60)),
+        ]
+        route = db_schema.relationship_routes(positioned)[0]
+        self.assertEqual(240, route.waypoints[1][0])
+
     def test_layout_is_deterministic_and_cards_do_not_overlap(self) -> None:
         tables = db_schema.parse_ddl('CREATE TABLE parent(id bigint PRIMARY KEY); '
                                     'CREATE TABLE child(id bigint PRIMARY KEY, parent_id bigint REFERENCES parent(id)); '
