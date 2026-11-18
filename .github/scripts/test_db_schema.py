@@ -86,8 +86,10 @@ class SvgErdLayoutTest(unittest.TestCase):
             db_schema.PositionedTable(child, db_schema.Rect(0, 200, 180, 60)),
             db_schema.PositionedTable(parent, db_schema.Rect(0, 0, 180, 60)),
         ]
-        route = db_schema.relationship_routes(positioned)[0]
-        corridor = max(abs(point[0] - route.start[0]) for point in route.waypoints)
+        relationship = db_schema.relationships([child, parent])[0]
+        route = db_schema.relationship_route(relationship, {item.table.name: item for item in positioned}, 1, 1)
+        points = db_schema.compact_orthogonal_points(route, positioned)
+        corridor = max(abs(point[0] - route.start[0]) for point in points)
         self.assertGreaterEqual(corridor, db_schema.VERTICAL_CONNECTOR_CONTROL_OFFSET)
 
     def test_horizontally_separated_route_uses_a_balanced_corridor(self) -> None:
@@ -97,8 +99,10 @@ class SvgErdLayoutTest(unittest.TestCase):
             db_schema.PositionedTable(child, db_schema.Rect(0, 0, 180, 60)),
             db_schema.PositionedTable(parent, db_schema.Rect(300, 120, 180, 60)),
         ]
-        route = db_schema.relationship_routes(positioned)[0]
-        self.assertEqual(240, route.waypoints[1][0])
+        relationship = db_schema.relationships([child, parent])[0]
+        route = db_schema.relationship_route(relationship, {item.table.name: item for item in positioned}, 1, -1)
+        points = db_schema.compact_orthogonal_points(route, positioned)
+        self.assertEqual(240, points[1][0])
 
     def test_layout_is_deterministic_and_cards_do_not_overlap(self) -> None:
         tables = db_schema.parse_ddl('CREATE TABLE parent(id bigint PRIMARY KEY); '

@@ -548,14 +548,6 @@ def self_relationship_routes(positioned: list[PositionedTable]) -> list[Relation
 
 
 def relationship_routes(positioned: list[PositionedTable], routing_passes: int = 2) -> list[RelationshipRoute]:
-    if len(positioned) <= 24:
-        routes=[]
-        for route in legacy_relationship_routes(positioned):
-            points=compact_orthogonal_points(route,positioned)
-            routes.append(replace(route,waypoints=points,svg_path=rounded_orthogonal_path(points,{})))
-        routes.extend(self_relationship_routes(positioned))
-        return routes
-
     def factory(rel, points, child_side, parent_side):
         return RelationshipRoute(rel,points[0],points[1],points[-2],points[-1],child_side,parent_side,points)
 
