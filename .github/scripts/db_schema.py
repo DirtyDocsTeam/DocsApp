@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Схема БД из Liquibase-чанжлога: единый DDL и ERD на Mermaid.
+"""Схема БД из Liquibase-чанжлога: единый DDL, SVG ERD и Markdown со связями.
 
 Источник правды по схеме — чанжлог в `backend/api/src/main/resources/db/changelog/`.
-Скрипт разворачивает master-файл (`include`, `includeAll`, `sqlFile`) и собирает из него два
+Скрипт разворачивает master-файл (`include`, `includeAll`, `sqlFile`) и собирает из него три
 производных артефакта:
 
   * `documentation/design/db.sql` — единый DDL для чтения и прогона в psql;
-  * `documentation/design/erd.md` — ERD на Mermaid (`erDiagram`). Mermaid рендерят GitHub и вики,
-    поэтому картинка не нужна: диаграмма остаётся текстом и диффится как код.
+  * `documentation/design/erd.md` — страница диаграммы и таблица внешних ключей;
+  * `documentation/design/schema.svg` — векторная диаграмма; Mermaid доступен через --mermaid.
 
 Использование:
   python3 .github/scripts/db_schema.py            # пересобрать db.sql и erd.md
@@ -21,16 +21,23 @@ from __future__ import annotations
 
 import argparse
 import html
+import json
 import math
 import re
 import subprocess
 import sys
 import time
-from dataclasses import dataclass, field
+import uuid
+from collections import Counter
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from shutil import which
 
 from yaml_subset import YamlSubset
+from sql_schema import Column, Table, parse_ddl, column_references
+from erd_optimizer import (LayoutOptions, optimize_grid, route_all, hits_rect, overlap_length, trim_ports,
+                           smooth_terminal_path, merge_junctions, junction_conflicts, endpoint_keys, shared_corner_radii,
+                           TRANSPORT_GAP)
 
 CHANGELOG_DIR = "backend/api/src/main/resources/db/changelog"
 MASTER = CHANGELOG_DIR + "/db.changelog-master.yaml"
@@ -40,7 +47,7 @@ ERD_SVG = "documentation/design/schema.svg"
 LAYOUT_YAML = "documentation/design/layout.yaml"
 
 POSTGRES_IMAGE = "postgres:16-alpine"
-PG_CONTAINER = "docsapp-dbcheck"
+PG_CONTAINER = "docsapp-dbcheck-" + uuid.uuid4().hex[:12]
 
 SQL_HEADER = """-- DocsApp: схема базы данных.
 --
@@ -141,6 +148,19 @@ def load_changelog(root: Path) -> tuple[list[Path], list[str]]:
             spec = entry["changeSet"] or {}
             change_id = "%s:%s" % (spec.get("author", "?"), spec.get("id", "?"))
             sql_file = str(spec.get("sqlFile") or "").strip()
+            changes = spec.get('changes', [])
+            if changes:
+                for change in changes:
+                    if not isinstance(change, dict) or 'sqlFile' not in change:
+                        raise ValueError(f'Unsupported Liquibase change in {change_id}')
+                    source = change['sqlFile']
+                    source = {'path': source} if isinstance(source, str) else source
+                    name = source.get('path', '')
+                    path = resolve(name, is_true(source.get('relativeToChangelogFile')))
+                    if path is None:
+                        raise ValueError(f'Missing SQL file in {change_id}: {name}')
+                    files.append(path)
+                continue
             if sql_file:
                 path = resolve(sql_file, True) or resolve(sql_file, False)
                 if path is not None:
@@ -154,6 +174,8 @@ def load_changelog(root: Path) -> tuple[list[Path], list[str]]:
                 warnings.append("changeSet %s без SQL — пропущен" % change_id)
         else:
             warnings.append("неизвестная запись чанжлога: %s" % ", ".join(sorted(entry)))
+    if warnings:
+        raise ValueError('Cannot build a complete schema: ' + '; '.join(warnings))
     return files, warnings
 
 
@@ -224,135 +246,6 @@ def build_sql(root: Path, sql: str, files: list[Path]) -> str:
     return header + "\n" + sql + "\n"
 
 
-# ─────────────────────────── разбор DDL ───────────────────────────
-
-COLUMN_KEYWORDS = ("not null", "null", "default", "primary key", "unique", "references",
-                   "check", "generated", "constraint", "collate")
-
-TABLE_RE = re.compile(r"create\s+table\s+(?:if\s+not\s+exists\s+)?([\w.]+)\s*\(", re.I)
-REFERENCES_RE = re.compile(r"references\s+([\w.]+)\s*\(\s*(\w+)\s*\)", re.I)
-COLUMN_PK_RE = re.compile(r"primary\s+key", re.I)
-TABLE_PK_RE = re.compile(r"primary\s+key\s*\(([^)]*)\)", re.I)
-
-
-@dataclass
-class Column:
-    name: str
-    type: str
-    nullable: bool = True
-    primary: bool = False
-    reference: tuple[str, str] | None = None   # (таблица, колонка)
-    indexed: bool = False
-    unique: bool = False
-    trigger: bool = False
-
-
-@dataclass
-class Table:
-    name: str
-    columns: list[Column] = field(default_factory=list)
-    annotations: list[str] = field(default_factory=list)
-
-    def column(self, name: str) -> Column | None:
-        return next((column for column in self.columns if column.name == name), None)
-
-
-def split_table_name(raw: str) -> str:
-    return raw.split(".")[-1]
-
-
-def parse_ddl(sql: str) -> list[Table]:
-    """Достаёт из DDL таблицы, колонки, первичные и внешние ключи.
-
-    Разбор намеренно простой: он читает вывод самого скрипта и Liquibase-чанжлог, а не
-    произвольный SQL, поэтому ALTER TABLE и наследование типов не поддерживаются.
-    """
-    tables: list[Table] = []
-    compact = re.sub(r"--[^\n]*", "", sql)
-    position = 0
-    while True:
-        match = TABLE_RE.search(compact, position)
-        if not match:
-            break
-        open_paren = match.end() - 1
-        depth = 0
-        end = open_paren
-        for index in range(open_paren, len(compact)):
-            if compact[index] == "(":
-                depth += 1
-            elif compact[index] == ")":
-                depth -= 1
-                if depth == 0:
-                    end = index
-                    break
-        body = compact[open_paren + 1:end]
-        position = end + 1
-
-        table = Table(name=split_table_name(match.group(1)))
-        table_keys: list[str] = []
-        for raw_line in body.splitlines():
-            line = raw_line.strip().rstrip(",").strip()
-            if not line:
-                continue
-            lowered = line.lower()
-            table_pk = TABLE_PK_RE.search(line)
-            if table_pk and lowered.startswith(("primary key", "constraint", "unique")):
-                table_keys.extend(part.strip().strip('"') for part in table_pk.group(1).split(","))
-                continue
-            if lowered.startswith(("primary key", "unique", "constraint", "check", "foreign key")):
-                continue
-            parts = line.split(None, 1)
-            if len(parts) < 2:
-                continue
-            name, rest = parts[0].strip('"'), parts[1]
-            # тип — всё до первого служебного слова (берём самое левое совпадение, иначе
-            # `bigint GENERATED BY DEFAULT AS IDENTITY` разрежется по `default`)
-            cut = len(rest)
-            for keyword in COLUMN_KEYWORDS:
-                found = re.search(r"\b%s\b" % keyword.replace(" ", r"\s+"), rest, re.I)
-                if found:
-                    cut = min(cut, found.start())
-            type_text = rest[:cut]
-            column = Column(name=name, type=re.sub(r"\s+", " ", type_text).strip(),
-                            nullable="not null" not in lowered,
-                            primary=bool(COLUMN_PK_RE.search(rest)))
-            reference = REFERENCES_RE.search(rest)
-            if reference:
-                column.reference = (split_table_name(reference.group(1)), reference.group(2))
-            table.columns.append(column)
-
-        for key in table_keys:
-            column = table.column(key)
-            if column is not None:
-                column.primary = True
-        if len(table_keys) > 1:
-            table.annotations.append("PK " + ", ".join(table_keys))
-        if table.columns:
-            tables.append(table)
-    tables.sort(key=lambda item: item.name)
-    by_name = {table.name: table for table in tables}
-    for unique, name, table, columns in re.findall(r"create\s+(unique\s+)?index\s+(\w+)\s+on\s+(?:\w+\.)?(\w+)\s*\(([^)]*)\)", sql, re.I):
-        if table in by_name:
-            column_names = [part.strip().strip('"') for part in columns.split(',')]
-            if len(column_names) == 1 and (column := by_name[table].column(column_names[0])) is not None:
-                column.indexed = True
-                column.unique = bool(unique)
-            else:
-                by_name[table].annotations.append(("UQ " if unique else "IDX ") + ", ".join(column_names))
-    trigger_columns = {}
-    for function, body in re.findall(r"create\s+(?:or\s+replace\s+)?function\s+(?:\w+\.)?(\w+)\s*\([^)]*\).*?\$\$(.*?)\$\$", sql, re.I | re.S):
-        trigger_columns[function] = set(re.findall(r"\bnew\.(\w+)", body, re.I))
-    for name, table, function in re.findall(r"create\s+trigger\s+(\w+).*?\bon\s+(?:\w+\.)?(\w+).*?execute\s+function\s+(?:\w+\.)?(\w+)", sql, re.I | re.S):
-        if table in by_name:
-            targets = trigger_columns.get(function, set())
-            columns = [by_name[table].column(target) for target in targets]
-            if len(columns) == 1 and columns[0] is not None:
-                columns[0].trigger = True
-            else:
-                by_name[table].annotations.append("TRG " + name)
-    return tables
-
-
 # ─────────────────────────── Mermaid ───────────────────────────
 
 MERMAID_TYPE_RE = re.compile(r"[^A-Za-z0-9_\-()\[\]]+")
@@ -388,13 +281,11 @@ def render_mermaid(tables: list[Table]) -> str:
         lines.append("    }")
     for table in tables:
         for column in table.columns:
-            if not column.reference:
-                continue
-            parent = column.reference[0]
-            # у родителя ровно одна запись, у ребёнка — много; nullable FK допускает ноль
-            left = "|o" if column.nullable else "||"
-            lines.append('    %s %s--o{ %s : "%s.%s"' % (
-                parent, left, table.name, table.name, column.name))
+            for parent, parent_column in column_references(column):
+                # у родителя ровно одна запись, у ребёнка — много; nullable FK допускает ноль
+                left = "|o" if column.nullable else "||"
+                lines.append('    %s %s--o{ %s : "%s.%s"' % (
+                    parent, left, table.name, table.name, column.name))
     return "\n".join(lines)
 
 
@@ -404,13 +295,11 @@ def render_relations(tables: list[Table]) -> str:
     found = False
     for table in tables:
         for column in table.columns:
-            if not column.reference:
-                continue
-            found = True
-            parent, parent_column = column.reference
-            rows.append("| `%s` | `%s` | `%s` | `%s` | %s |" % (
-                table.name, column.name, parent, parent_column,
-                "нет" if column.nullable else "да"))
+            for parent, parent_column in column_references(column):
+                found = True
+                rows.append("| `%s` | `%s` | `%s` | `%s` | %s |" % (
+                    table.name, column.name, parent, parent_column,
+                    "нет" if column.nullable else "да"))
     return "\n".join(rows) if found else "_Внешних ключей нет._"
 
 
@@ -433,10 +322,35 @@ def load_fixed_positions(root: Path, tables: list[Table]) -> dict[str, tuple[flo
         raise SystemExit("%s: неизвестные таблицы: %s" % (LAYOUT_YAML, ", ".join(unknown)))
     result = {}
     for name, value in positions.items():
-        if not isinstance(value, dict) or not isinstance(value.get("x"), (int, float)) or not isinstance(value.get("y"), (int, float)):
+        if not isinstance(value,dict):
             raise SystemExit("%s: %s требует числовые x и y" % (LAYOUT_YAML, name))
-        result[name] = float(value["x"]), float(value["y"])
+        try:
+            point=float(value['x']),float(value['y'])
+            if not all(math.isfinite(v) for v in point):
+                raise ValueError()
+        except (KeyError,TypeError,ValueError):
+            raise SystemExit("%s: %s требует конечные числовые x и y" % (LAYOUT_YAML,name))
+        result[name]=point
     return result
+
+
+def load_layout_options(root: Path, steps: int | None = None, routing_passes: int | None = None,
+                        seed: int | None = None) -> LayoutOptions:
+    path=root / LAYOUT_YAML
+    document=YamlSubset(path.read_text(encoding='utf-8'),LAYOUT_YAML).parse() if path.is_file() else {}
+    settings=document.get('optimization',{})
+    if not isinstance(settings,dict):
+        raise ValueError('layout.yaml: optimization must be a mapping')
+    unknown=set(settings)-{'steps','routing_passes','seed'}
+    if unknown:
+        raise ValueError('Unknown layout optimization keys: '+', '.join(sorted(unknown)))
+    # The shared YAML subset reader intentionally leaves scalar values as strings.
+    values={key:int(value) if isinstance(value,str) and re.fullmatch(r'[+-]?\d+',value) else value
+            for key,value in settings.items()}
+    for key,value in (('steps',steps),('routing_passes',routing_passes),('seed',seed)):
+        if value is not None:
+            values[key]=value
+    return LayoutOptions(**values)
 
 
 # ─────────────────────────── SVG ERD ───────────────────────────
@@ -502,11 +416,19 @@ class RelationshipRoute:
     end: tuple[float, float]
     child_side: int
     parent_side: int
+    waypoints: tuple[tuple[float, float], ...] = ()
+    svg_path: str = ''
+    merge_zones: tuple = ()
+
+
+def route_endpoint_keys(route: RelationshipRoute):
+    return ((route.relationship.child,route.relationship.column,route.child_side),
+            (route.relationship.parent,route.relationship.parent_column,route.parent_side))
 
 
 def card_size(table: Table) -> tuple[float, float]:
     """Estimate monospace card geometry without requiring installed fonts."""
-    longest = max([len(table.name)] + [len(column.name) + len(column.type) + 6
+    longest = max([len(table.name)] + [len(a) for a in table.annotations] + [len(column.name) + len(column.type) + 6
                                        for column in table.columns])
     return max(180, 38 + longest * 7), CARD_HEADER_HEIGHT + (len(table.columns) + len(table.annotations)) * CARD_ROW_HEIGHT
 
@@ -528,9 +450,9 @@ def violates_card_gap(first: Rect, second: Rect) -> bool:
 
 def relationships(tables: list[Table]) -> list[Relationship]:
     known = {table.name for table in tables}
-    return [Relationship(table.name, column.name, column.reference[0], column.reference[1], column.nullable)
-            for table in tables for column in table.columns
-            if column.reference and column.reference[0] in known and column.reference[0] != table.name]
+    return [Relationship(table.name, column.name, parent, parent_column, column.nullable)
+            for table in tables for column in table.columns for parent, parent_column in column_references(column)
+            if parent in known and parent != table.name]
 
 
 def relationship_route(relationship: Relationship, positioned: dict[str, PositionedTable],
@@ -558,7 +480,7 @@ def relationship_route(relationship: Relationship, positioned: dict[str, Positio
     return RelationshipRoute(relationship, start, start_control, end_control, end, child_side, parent_side)
 
 
-def relationship_routes(positioned: list[PositionedTable]) -> list[RelationshipRoute]:
+def legacy_relationship_routes(positioned: list[PositionedTable]) -> list[RelationshipRoute]:
     by_name = {item.table.name: item for item in positioned}
     routes = []
     for relationship in sorted(relationships([item.table for item in positioned]),
@@ -586,6 +508,30 @@ def relationship_routes(positioned: list[PositionedTable]) -> list[RelationshipR
     return routes
 
 
+def relationship_routes(positioned: list[PositionedTable], routing_passes: int = 2) -> list[RelationshipRoute]:
+    if len(positioned) <= 24 or not routing_passes:
+        return legacy_relationship_routes(positioned)
+    def factory(rel, points, child_side, parent_side):
+        return RelationshipRoute(rel,points[0],points[1],points[-2],points[-1],child_side,parent_side,points)
+    def evaluate(routes):
+        score=score_layout(positioned,routes)
+        return score.table_intersections,score.line_intersections,score.total
+    routes=route_all(positioned,relationships([item.table for item in positioned]),routing_passes,factory,evaluate)
+    zones=tuple(merge_junctions(positioned,{r.relationship:(r.waypoints,r.child_side,r.parent_side) for r in routes}))
+    radii=shared_corner_radii({r.relationship:(r.waypoints,r.child_side,r.parent_side) for r in routes},positioned,zones)
+    endpoints=Counter(key for route in routes for key in route_endpoint_keys(route))
+    result=[]
+    for route in routes:
+        path,geometry=smooth_terminal_path(route.waypoints,route.child_side,route.parent_side,
+                                           positioned,route.relationship.child,route.relationship.parent,
+                                           endpoints[(route.relationship.child,route.relationship.column,route.child_side)]>1,
+                                           endpoints[(route.relationship.parent,route.relationship.parent_column,route.parent_side)]>1,
+                                           [(key,rect) for key,rect in zones if key not in endpoint_keys(route.relationship)],
+                                           [(key,rect) for key,rect in zones if key in endpoint_keys(route.relationship)],radii)
+        result.append(replace(route,waypoints=geometry,svg_path=path,merge_zones=zones))
+    return result
+
+
 def orientation(first: tuple[float, float], second: tuple[float, float], third: tuple[float, float]) -> float:
     return ((second[0] - first[0]) * (third[1] - first[1]) -
             (second[1] - first[1]) * (third[0] - first[0]))
@@ -599,11 +545,7 @@ def segments_intersect(first_start: tuple[float, float], first_end: tuple[float,
 
 
 def segment_crosses_rect(start: tuple[float, float], end: tuple[float, float], rect: Rect) -> bool:
-    edges = [((rect.x, rect.y), (rect.x + rect.width, rect.y)),
-             ((rect.x + rect.width, rect.y), (rect.x + rect.width, rect.y + rect.height)),
-             ((rect.x + rect.width, rect.y + rect.height), (rect.x, rect.y + rect.height)),
-             ((rect.x, rect.y + rect.height), (rect.x, rect.y))]
-    return any(segments_intersect(start, end, edge_start, edge_end) for edge_start, edge_end in edges)
+    return hits_rect(start,end,rect)
 
 
 def expanded_rect(rect: Rect, padding: float = LINE_BLOCK_CLEARANCE) -> Rect:
@@ -613,6 +555,8 @@ def expanded_rect(rect: Rect, padding: float = LINE_BLOCK_CLEARANCE) -> Rect:
 
 def route_segments(route: RelationshipRoute) -> list[tuple[tuple[float, float], tuple[float, float]]]:
     """Approximate the rendered cubic Bézier with four collision segments."""
+    if route.waypoints:
+        return list(zip(route.waypoints,route.waypoints[1:]))
     points = []
     for index in range(5):
         t = index / 4
@@ -635,8 +579,8 @@ def routes_intersect(first: RelationshipRoute, second: RelationshipRoute) -> boo
                for other_start, other_end in route_segments(second))
 
 
-def score_layout(positioned: list[PositionedTable]) -> LayoutScore:
-    routes = relationship_routes(positioned)
+def score_layout(positioned: list[PositionedTable], routes: list[RelationshipRoute] | None = None) -> LayoutScore:
+    routes = relationship_routes(positioned) if routes is None else routes
     card_hits = sum(route_crosses_rect(route, item.rect)
                     for route in routes for item in positioned
                     if item.table.name not in {route.relationship.child, route.relationship.parent})
@@ -747,8 +691,21 @@ def layout_variant(tables: list[Table], seed: str | None = None,
     return positioned
 
 
-def layout_tables(tables: list[Table], fixed_positions: dict[str, tuple[float, float]] | None = None) -> list[PositionedTable]:
+def layout_tables(tables: list[Table], fixed_positions: dict[str, tuple[float, float]] | None = None,
+                  options: LayoutOptions | None = None) -> list[PositionedTable]:
     """Pick the best deterministic leaf-seeded layout while retaining a stable output."""
+    if len(tables) > 24:
+        ordered = preoptimized_order(tables)
+        gutter=max(CARD_GUTTER,TRANSPORT_GAP+24)
+        pitch_x = max(card_size(t)[0] for t in ordered) + gutter
+        pitch_y = max(card_size(t)[1] for t in ordered) + gutter
+        columns = math.ceil(math.sqrt(len(ordered)))
+        initial = [PositionedTable(t, Rect(*(fixed_positions or {}).get(t.name,
+                    ((i % columns) * pitch_x, (i // columns) * pitch_y)), *card_size(t)))
+                for i, t in enumerate(ordered)]
+        if any(violates_card_gap(a.rect,b.rect) for i,a in enumerate(initial) for b in initial[i+1:]):
+            raise ValueError('Fixed layout positions overlap cards or violate the minimum gap')
+        return optimize_grid(initial,relationships(tables),options or LayoutOptions(),fixed_positions or {})
     degrees = {table.name: 0 for table in tables}
     for relationship in relationships(tables):
         degrees[relationship.child] += 1
@@ -763,25 +720,60 @@ def svg_escape(value: str) -> str:
     return html.escape(value, quote=True)
 
 
-def render_svg(tables: list[Table], fixed_positions: dict[str, tuple[float, float]] | None = None) -> str:
+def render_svg(tables: list[Table], fixed_positions: dict[str, tuple[float, float]] | None = None,
+               options: LayoutOptions | None = None, stats: dict | None = None) -> str:
     if not tables:
         raise ValueError("ERD не содержит таблиц для SVG-рендера")
-    positioned = layout_tables(tables, fixed_positions)
+    options=options or LayoutOptions()
+    positioned = layout_tables(tables, fixed_positions, options)
+    routes=relationship_routes(positioned,options.routing_passes)
+    if stats is not None:
+        stats.update(asdict(score_layout(positioned,routes)))
+        polylines=[(set(route_endpoint_keys(route)),trim_ports(route.waypoints)) for route in routes if route.waypoints]
+        overlaps=[]
+        unrelated=[]
+        for i,(keys,first) in enumerate(polylines):
+            for other_keys,second in polylines[i+1:]:
+                length=overlap_length(first,second)
+                overlaps.append(length)
+                if not keys & other_keys:
+                    unrelated.append(length)
+        stats.update(overlapping_pairs=sum(length>0 for length in overlaps),
+                     shared_length=round(sum(overlaps),2),
+                     unrelated_overlapping_pairs=sum(length>0 for length in unrelated),
+                     unrelated_shared_length=round(sum(unrelated),2))
+        zones=routes[0].merge_zones if routes else ()
+        stats['merge_crossing_routes']=len(junction_conflicts(
+            {r.relationship:(r.waypoints,r.child_side,r.parent_side) for r in routes},zones))
     by_name = {item.table.name: item for item in positioned}
     min_x = min(item.rect.x for item in positioned) - LAYOUT_PADDING
     min_y = min(item.rect.y for item in positioned) - LAYOUT_PADDING
     max_x = max(item.rect.x + item.rect.width for item in positioned) + LAYOUT_PADDING
     max_y = max(item.rect.y + item.rect.height for item in positioned) + LAYOUT_PADDING
+    points=[point for route in routes for point in (route.waypoints or
+            (route.start,route.start_control,route.end_control,route.end))]
+    if points:
+        min_x=min(min_x,min(p[0] for p in points)-LAYOUT_PADDING)
+        min_y=min(min_y,min(p[1] for p in points)-LAYOUT_PADDING)
+        max_x=max(max_x,max(p[0] for p in points)+LAYOUT_PADDING)
+        max_y=max(max_y,max(p[1] for p in points)+LAYOUT_PADDING)
     lines = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="%g %g %g %g" font-family="ui-sans-serif, system-ui, sans-serif">' %
              (max_x - min_x, max_y - min_y, min_x, min_y, max_x - min_x, max_y - min_y),
              '<defs><marker id="many-right" markerWidth="12" markerHeight="12" refX="8" refY="6" orient="0" overflow="visible"><path d="M0 6 L8 1 M0 6 L8 6 M0 6 L8 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker><marker id="many-left" markerWidth="12" markerHeight="12" refX="0" refY="6" orient="0" overflow="visible"><path d="M8 6 L0 1 M8 6 L0 6 M8 6 L0 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker><marker id="zero-many-right" markerWidth="18" markerHeight="12" refX="10" refY="6" orient="0" overflow="visible"><circle cx="5" cy="6" r="2.5" fill="#0e1116" stroke="#5d6b7d" stroke-width="1.5"/><path d="M8 6 L15 1 M8 6 L15 6 M8 6 L15 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker><marker id="zero-many-left" markerWidth="18" markerHeight="12" refX="0" refY="6" orient="0" overflow="visible"><circle cx="10" cy="6" r="2.5" fill="#0e1116" stroke="#5d6b7d" stroke-width="1.5"/><path d="M7 6 L0 1 M7 6 L0 6 M7 6 L0 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker></defs>',
              ]
-    for route in relationship_routes(positioned):
+    for route in routes:
         relationship = route.relationship
         marker = ("zero-many" if relationship.nullable else "many") + ("-left" if route.child_side > 0 else "-right")
-        lines.append('<path d="M %g %g C %g %g, %g %g, %g %g" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#%s)"/>' %
-                     (route.start[0], route.start[1], route.start_control[0], route.start_control[1],
-                      route.end_control[0], route.end_control[1], route.end[0], route.end[1], marker))
+        if route.svg_path:
+            path=route.svg_path
+        elif route.waypoints:
+            path='M %g %g' % route.waypoints[0] + ''.join(' L %g %g' % point for point in route.waypoints[1:])
+        else:
+            path='M %g %g C %g %g, %g %g, %g %g' % (route.start[0],route.start[1],route.start_control[0],
+                 route.start_control[1],route.end_control[0],route.end_control[1],route.end[0],route.end[1])
+        title=f'{relationship.child}.{relationship.column} → {relationship.parent}.{relationship.parent_column}'
+        lines.append('<path class="relationship" d="%s" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#%s)"><title>%s</title></path>' %
+                     (path,marker,svg_escape(title)))
     for item in positioned:
         table, rect = item.table, item.rect
         lines.append('<g transform="translate(%g %g)"><rect width="%g" height="%g" rx="10" fill="#1b212b" stroke="#2b333f"/>' %
@@ -825,17 +817,15 @@ def render_svg(tables: list[Table], fixed_positions: dict[str, tuple[float, floa
 
 def verify(sql_path: Path, dry_run: bool) -> int:
     """Прогоняет db.sql на чистой PostgreSQL в docker: черновик схемы должен хотя бы выполняться."""
-    if which("docker") is None:
-        print("Нет docker — проверить DDL нечем.", file=sys.stderr)
-        return 1
     command = ["docker", "run", "-d", "--rm", "--name", PG_CONTAINER,
                "-e", "POSTGRES_PASSWORD=check",
                "-v", "%s:/sql:ro" % sql_path.parent, POSTGRES_IMAGE]
     if dry_run:
         print(" ".join(command))
         return 0
-    subprocess.run(["docker", "rm", "-f", PG_CONTAINER],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if which("docker") is None:
+        print("Нет docker — проверить DDL нечем.", file=sys.stderr)
+        return 1
     try:
         subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
 
@@ -880,7 +870,7 @@ def verify(sql_path: Path, dry_run: bool) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="DDL, Mermaid и SVG ERD из Liquibase-чанжлога")
-    parser.add_argument("--root", default=".", help="корень репозитория")
+    parser.add_argument("--root", default=str(Path(__file__).resolve().parents[2]), help="корень DocsApp")
     parser.add_argument("--check", action="store_true",
                         help="не писать файлы, а проверить их соответствие чанжлогу")
     parser.add_argument("--verify", action="store_true",
@@ -890,27 +880,36 @@ def main(argv: list[str] | None = None) -> int:
                         help="совместимый алиас локальной генерации SVG")
     parser.add_argument("--print-command", action="store_true",
                         help="показать команду проверки, ничего не запуская")
+    parser.add_argument('--layout-steps',type=int,help='число предложений перестановки таблиц большой схемы')
+    parser.add_argument('--routing-passes',type=int,help='число проходов обходящей блоки разводки; 0 — старые кривые')
+    parser.add_argument('--layout-seed',type=int,help='seed воспроизводимой оптимизации')
+    parser.add_argument('--layout-stats',action='store_true',help='показать число пересечений линий с блоками и линиями')
     args = parser.parse_args(argv)
 
-    root = git_repo_root(Path(args.root).resolve())
+    root = Path(args.root).resolve()
     sql, files, warnings = collect_sql(root)
     for warning in dict.fromkeys(warnings):
         print("⚠ %s" % warning, file=sys.stderr)
 
     tables = parse_ddl(sql)
     fixed_positions = load_fixed_positions(root, tables)
+    options=load_layout_options(root,args.layout_steps,args.routing_passes,args.layout_seed)
 
     if args.mermaid:
         print(render_mermaid(tables))
         return 0
 
+    stats={} if args.layout_stats else None
     artifacts = {
         root / DB_SQL: build_sql(root, sql, files),
         root / ERD_MD: build_erd(tables),
-        root / ERD_SVG: render_svg(tables, fixed_positions),
+        root / ERD_SVG: render_svg(tables, fixed_positions,options,stats),
     }
+    if stats is not None:
+        print('ERD layout: '+json.dumps({'steps':options.steps,'routing_passes':options.routing_passes,
+              'seed':options.seed,**stats},ensure_ascii=False,sort_keys=True))
 
-    relations = sum(1 for table in tables for column in table.columns if column.reference)
+    relations = sum(len(table.foreign_keys) for table in tables)
 
     if args.check:
         stale = [path for path, content in artifacts.items()
@@ -940,4 +939,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8')
     raise SystemExit(main())

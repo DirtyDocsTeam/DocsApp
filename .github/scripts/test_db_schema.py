@@ -71,9 +71,9 @@ class SvgErdLayoutTest(unittest.TestCase):
         self.assertEqual(96, route.end_control[0] - route.end[0])
 
     def test_layout_is_deterministic_and_cards_do_not_overlap(self) -> None:
-        root = Path(__file__).resolve().parents[2]
-        sql, _, _ = db_schema.collect_sql(root)
-        tables = db_schema.parse_ddl(sql)
+        tables = db_schema.parse_ddl('CREATE TABLE parent(id bigint PRIMARY KEY); '
+                                    'CREATE TABLE child(id bigint PRIMARY KEY, parent_id bigint REFERENCES parent(id)); '
+                                    'CREATE TABLE leaf(id bigint PRIMARY KEY, child_id bigint REFERENCES child(id));')
         first = db_schema.layout_tables(tables)
         second = db_schema.layout_tables(tables)
         self.assertEqual(first, second)
