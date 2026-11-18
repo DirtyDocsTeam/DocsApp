@@ -8,3 +8,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/003-oidc-subject-unique.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/004-jobs-media-lifecycle.sql
+      relativeToChangelogFile: false

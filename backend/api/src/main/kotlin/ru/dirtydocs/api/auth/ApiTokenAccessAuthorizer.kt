@@ -15,4 +15,14 @@ class ApiTokenAccessAuthorizer(
         val access = identity.getAttribute<TokenAccessRights>(ACCESS_ATTRIBUTE) ?: return
         if (!scope(access).read) throw ForbiddenException()
     }
+
+    fun requireEdit(scope: (TokenAccessRights) -> AccessPermissions) {
+        val access = identity.getAttribute<TokenAccessRights>(ACCESS_ATTRIBUTE) ?: return
+        if (!scope(access).edit) throw ForbiddenException()
+    }
+
+    fun requireDelete(scope: (TokenAccessRights) -> AccessPermissions) {
+        val access = identity.getAttribute<TokenAccessRights>(ACCESS_ATTRIBUTE) ?: return
+        if (!scope(access).delete) throw ForbiddenException()
+    }
 }

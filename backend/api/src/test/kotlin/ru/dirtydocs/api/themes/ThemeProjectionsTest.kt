@@ -44,6 +44,17 @@ class ThemeProjectionsTest {
     }
 
     @Test
+    fun themeOwnerCanReadTheirThemeOutsideACollectionAndDeletedThemesAreHidden() {
+        val sql = DSL.using(SQLDialect.POSTGRES).renderInlined(
+            ThemeProjections.THEME.compile(Selection.of("id"), ProjectionContext(viewerId = 42)).condition,
+        )
+
+        assertTrue(sql.contains("owner_user_id", ignoreCase = true))
+        assertTrue(sql.contains("deleted_at", ignoreCase = true))
+        assertTrue(sql.contains("42"))
+    }
+
+    @Test
     fun collectionThemeRelationUsesTheManyToManyLinkTable() {
         val selection = Selection(mapOf("themes" to Selection.of("id")))
         val projection = ThemeProjections.THEME_COLLECTION.compile(

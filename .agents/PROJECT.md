@@ -32,7 +32,7 @@ This file states product intent only. The architecture is defined by the C4 cont
 These used to be open questions; the diagram settles them, so they are not revisited without changing the diagram.
 
 - **No message broker.** Work reaches workers as `gRPC [Job assign]` from the API; results and status come back as `gRPC [Announce]`. Retry and idempotency therefore belong to the gRPC assignment, not to a queue consumer.
-- **No server-side push to clients.** C4 draws no notification channel, so progress is polled through the API. Introducing SSE or WebSocket is an architecture change: record it in C4 first.
+- **GraphQL subscriptions use WebSocket.** The SPA receives authorized job and theme updates through the `Ingress → Main API Plane` WebSocket GraphQL relationship. REST API clients may continue polling job status.
 - **Two client-facing surfaces.** REST serves external API clients and integrations; GraphQL serves the SPA and clients that need flexible selection. Both enter through Ingress.
 - **Identity lives in Keycloak.** The API is a resource server: token validation only, no credential storage and no local user passwords.
 - **The API plane is Quarkus/JVM, not .NET.** C# and C++ appear only inside the conversion and validation workers.

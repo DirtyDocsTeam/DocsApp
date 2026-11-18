@@ -10,7 +10,7 @@ quarkus:
     change-log: db/changelog/db.changelog-master.yaml
     migrate-at-start: true
   oidc:
-    application-type: web-app
+    application-type: hybrid
     authentication:
       scopes: openid,email
     roles:

@@ -175,6 +175,7 @@ object JobProjections {
     private fun requestAccess(table: Table<*>, context: ProjectionContext): Condition =
         context.viewerId?.let { viewerId ->
             table.fieldOf(JOB_REQUEST.USER_ID).eq(viewerId)
+                .and(DSL.field(DSL.name(table.name, "deleted_at"), java.time.OffsetDateTime::class.java).isNull)
         } ?: DSL.falseCondition()
 
     private fun <T> Table<*>.fieldOf(field: Field<T>): Field<T> =

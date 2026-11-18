@@ -98,13 +98,13 @@ object ThemeProjections {
     /** Restricts themes to collections assigned to the trusted viewer; anonymous viewers match none. */
     internal fun personalThemes(context: ProjectionContext): Condition =
         context.viewerId?.let { viewerId ->
-            THEMES.ID.`in`(
+            ownerId.eq(viewerId).or(THEMES.ID.`in`(
                 DSL.select(THEME_COLLECTION_THEMES.THEME_ID)
                     .from(THEME_COLLECTION_THEMES)
                     .join(USER_THEME_COLLECTIONS)
                     .on(THEME_COLLECTION_THEMES.THEME_COLLECTION_ID.eq(USER_THEME_COLLECTIONS.THEME_COLLECTION_ID))
                     .where(USER_THEME_COLLECTIONS.USER_ID.eq(viewerId))
-            )
+            ))
         } ?: DSL.falseCondition()
 
     /** Restricts collections to those assigned to the trusted viewer; anonymous viewers match none. */
@@ -126,7 +126,7 @@ object ThemeProjections {
             ?: DSL.trueCondition()
 
     private fun themeAccess(context: ProjectionContext): Condition =
-        THEMES.IS_PUBLIC.eq(true).or(personalThemes(context))
+        deletedAt.isNull.and(THEMES.IS_PUBLIC.eq(true).or(personalThemes(context)))
 
     private fun styleAccess(context: ProjectionContext): Condition =
         STYLES.THEME_ID.`in`(
@@ -137,4 +137,7 @@ object ThemeProjections {
 
     private fun themeCollectionAccess(context: ProjectionContext): Condition =
         THEME_COLLECTIONS.IS_PUBLIC.eq(true).or(personalThemeCollections(context))
+
+    private val deletedAt = DSL.field(DSL.name("themes", "deleted_at"), java.time.OffsetDateTime::class.java)
+    private val ownerId = DSL.field(DSL.name("themes", "owner_user_id"), Long::class.java)
 }
