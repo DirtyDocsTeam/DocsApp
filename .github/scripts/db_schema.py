@@ -35,9 +35,9 @@ from shutil import which
 
 from yaml_subset import YamlSubset
 from sql_schema import Column, Table, parse_ddl, column_references
-from erd_optimizer import (LayoutOptions, Router, optimize_grid, route_all, hits_rect, overlap_length, trim_ports,
+from erd_optimizer import (LayoutOptions, optimize_grid, route_all, hits_rect, overlap_length, trim_ports,
                            smooth_terminal_path, merge_junctions, junction_conflicts, endpoint_keys, shared_corner_radii,
-                           protect_merge_junctions, rounded_orthogonal_path, TRANSPORT_GAP)
+                           rounded_orthogonal_path, TRANSPORT_GAP)
 
 CHANGELOG_DIR = "backend/api/src/main/resources/db/changelog"
 MASTER = CHANGELOG_DIR + "/db.changelog-master.yaml"
@@ -529,11 +529,21 @@ def self_relationship_routes(positioned: list[PositionedTable]) -> list[Relation
         end=(item.rect.x+item.rect.width,item.rect.y+CARD_HEADER_HEIGHT+(parent_row+.5)*CARD_ROW_HEIGHT)
         loop_x=item.rect.x+item.rect.width+48+index*18
         points=(start,(loop_x,start[1]),(loop_x,end[1]),end)
-        routes.append(RelationshipRoute(relationship,start,points[1],points[-2],end,1,1,points))
+        routes.append(RelationshipRoute(relationship,start,points[1],points[-2],end,1,1,points,
+                                       svg_path=rounded_orthogonal_path(points,{})))
     return routes
 
 
 def relationship_routes(positioned: list[PositionedTable], routing_passes: int = 2) -> list[RelationshipRoute]:
+    if len(positioned) <= 24:
+        routes=[]
+        for route in legacy_relationship_routes(positioned):
+            midpoint=(route.start[0]+route.end[0])/2
+            points=(route.start,(midpoint,route.start[1]),(midpoint,route.end[1]),route.end)
+            routes.append(replace(route,waypoints=points,svg_path=rounded_orthogonal_path(points,{})))
+        routes.extend(self_relationship_routes(positioned))
+        return routes
+
     def factory(rel, points, child_side, parent_side):
         return RelationshipRoute(rel,points[0],points[1],points[-2],points[-1],child_side,parent_side,points)
 
@@ -541,41 +551,8 @@ def relationship_routes(positioned: list[PositionedTable], routing_passes: int =
         score=score_layout(positioned,routes)
         return score.table_intersections,score.line_intersections,score.total
 
-    if len(positioned) <= 24:
-        # Compact diagrams do not need a complete visibility-grid search just to
-        # reach the nearest free vertical channel.  They still receive the same
-        # merge-zone protection and lane separation as the full router.  Should a
-        # deterministic initial route touch a card, use the full obstacle router.
-        initial=[]
-        for route in legacy_relationship_routes(positioned):
-            midpoint=(route.start[0]+route.end[0])/2
-            points=(route.start,(midpoint,route.start[1]),(midpoint,route.end[1]),route.end)
-            initial.append(factory(route.relationship,points,route.child_side,route.parent_side))
-        def touches_card(route):
-            keys={route.relationship.child,route.relationship.parent}
-            return any(hits_rect(start,end,item.rect,8 if item.table.name in keys else 12)
-                       for start,end in zip(trim_ports(route.waypoints),trim_ports(route.waypoints)[1:])
-                       for item in positioned)
-        paths={route.relationship:(route.waypoints,route.child_side,route.parent_side) for route in initial}
-        blocked=[route.relationship for route in initial if touches_card(route)]
-        if blocked:
-            # Keep the routes which are already safe.  Running A* for every FK after
-            # one collision turns a local repair into a disproportionately expensive
-            # full-schema search.
-            router=Router(positioned,blocked,
-                          extra_points=[point for points,_,_ in paths.values() for point in points])
-            for relationship,(points,_,_) in paths.items():
-                if relationship not in blocked:
-                    router.add_usage(points[1:-1],1)
-            for relationship in blocked:
-                paths[relationship]=router.route(relationship)
-                router.add_usage(paths[relationship][0][1:-1],1)
-        protected,_=protect_merge_junctions(positioned,paths,rounds=2)
-        routes=[factory(relationship,*protected[relationship]) for relationship in sorted(protected,
-                key=lambda rel:(rel.child,rel.column,rel.parent,rel.parent_column))]
-    else:
-        routes=route_all(positioned,routed_relationships([item.table for item in positioned]),
-                         max(1,routing_passes),factory,evaluate)
+    routes=route_all(positioned,routed_relationships([item.table for item in positioned]),
+                     max(1,routing_passes),factory,evaluate)
     routes.extend(self_relationship_routes(positioned))
     zones=tuple(merge_junctions(positioned,{r.relationship:(r.waypoints,r.child_side,r.parent_side) for r in routes}))
     radii=shared_corner_radii({r.relationship:(r.waypoints,r.child_side,r.parent_side) for r in routes},positioned,zones)
@@ -677,10 +654,16 @@ def layout_variant(tables: list[Table], seed: str | None = None,
                    fixed_positions: dict[str, tuple[float, float]] | None = None) -> list[PositionedTable]:
     """Deterministic grid start plus bounded local improvement for the ERD score."""
     # Routing is an exact finalisation step.  Candidate placement needs only a cheap,
-    # stable surrogate; invoking the obstacle router for each candidate is quadratic
-    # in the number of optimisation proposals.
+    # stable copy of the compact orthogonal geometry; invoking the obstacle router
+    # for each candidate is quadratic in the number of optimisation proposals.
     def candidate_score(items: list[PositionedTable]) -> LayoutScore:
-        return score_layout(items, legacy_relationship_routes(items))
+        routes=[]
+        for route in legacy_relationship_routes(items):
+            midpoint=(route.start[0]+route.end[0])/2
+            points=(route.start,(midpoint,route.start[1]),(midpoint,route.end[1]),route.end)
+            routes.append(RelationshipRoute(route.relationship,points[0],points[1],points[-2],points[-1],
+                                           route.child_side,route.parent_side,points))
+        return score_layout(items,routes)
 
     degrees = {table.name: 0 for table in tables}
     for relationship in routed_relationships(tables):

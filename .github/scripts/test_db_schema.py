@@ -6,7 +6,6 @@ import importlib.util
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -52,19 +51,6 @@ class SvgErdLayoutTest(unittest.TestCase):
         svg = db_schema.render_svg([table])
         self.assertIn("job_request.parent_request_id → job_request.id", svg)
         self.assertIn('Q ', svg)
-
-    def test_small_schema_uses_merge_protection(self) -> None:
-        parent = db_schema.Table("parent", [db_schema.Column("id", "bigint", primary=True)])
-        child = db_schema.Table("child", [
-            db_schema.Column("parent_id", "bigint", reference=("parent", "id")),
-        ])
-        positioned = [
-            db_schema.PositionedTable(child, db_schema.Rect(0, 0, 180, 60)),
-            db_schema.PositionedTable(parent, db_schema.Rect(300, 0, 180, 60)),
-        ]
-        with patch.object(db_schema, "protect_merge_junctions", wraps=db_schema.protect_merge_junctions) as protect:
-            db_schema.relationship_routes(positioned)
-        protect.assert_called_once()
 
     def test_segment_crossing_excludes_shared_endpoints(self) -> None:
         self.assertTrue(db_schema.segments_intersect((0, 0), (4, 4), (0, 4), (4, 0)))

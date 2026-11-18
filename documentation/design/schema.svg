@@ -1,49 +1,54 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="2629" height="2089" viewBox="-170.25 -300.5 2629 2089" font-family="ui-sans-serif, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="2578" height="2089" viewBox="-358 -300.5 2578.75 2089" font-family="ui-sans-serif, system-ui, sans-serif">
 <defs><marker id="many-right" markerWidth="12" markerHeight="12" refX="8" refY="6" orient="0" overflow="visible"><path d="M0 6 L8 1 M0 6 L8 6 M0 6 L8 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker><marker id="many-left" markerWidth="12" markerHeight="12" refX="0" refY="6" orient="0" overflow="visible"><path d="M8 6 L0 1 M8 6 L0 6 M8 6 L0 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker><marker id="zero-many-right" markerWidth="18" markerHeight="12" refX="10" refY="6" orient="0" overflow="visible"><circle cx="5" cy="6" r="2.5" fill="#0e1116" stroke="#5d6b7d" stroke-width="1.5"/><path d="M8 6 L15 1 M8 6 L15 6 M8 6 L15 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker><marker id="zero-many-left" markerWidth="18" markerHeight="12" refX="0" refY="6" orient="0" overflow="visible"><circle cx="10" cy="6" r="2.5" fill="#0e1116" stroke="#5d6b7d" stroke-width="1.5"/><path d="M7 6 L0 1 M7 6 L0 6 M7 6 L0 11" fill="none" stroke="#5d6b7d" stroke-width="1.5"/></marker></defs>
-<path class="relationship" d="M 234 73 L 365.8 73 Q 377.5 73 377.5 61.3 L 377.5 58.7 Q 377.5 47 389.2 47 L 521 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>api_tokens.user_id → users.id</title></path>
-<path class="relationship" d="M 911.75 -135.5 L 876.875 -135.5 Q 864.875 -135.5 864.875 -123.5 L 864.875 35 Q 864.875 47 852.875 47 L 818 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#zero-many-right)"><title>domain_event_outbox.owner_user_id → users.id</title></path>
-<path class="relationship" d="M 911.75 651.5 L 635.25 651.5 Q 623.25 651.5 623.25 639.5 L 623.25 434.5 Q 623.25 422.5 611.25 422.5 L 334.75 422.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_events.job_id → job_request.id</title></path>
-<path class="relationship" d="M 701.75 969.25 L 860.288 969.25 Q 871.875 969.25 871.875 957.663 L 871.875 955.087 Q 871.875 943.5 883.462 943.5 L 1042 943.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#zero-many-left)"><title>job_expected_media.media_id → media.id</title></path>
-<path class="relationship" d="M 390.75 839.25 L 374.75 839.25 Q 362.75 839.25 362.75 827.25 L 362.75 434.5 Q 362.75 422.5 350.75 422.5 L 334.75 422.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_expected_media.request_id → job_request.id</title></path>
-<path class="relationship" d="M 390.75 865.25 L 377.55 865.25 Q 366.75 865.25 366.75 854.45 L 366.75 642.75 Q 366.75 630.75 378.75 630.75 L 401.5 630.75 Q 413.5 630.75 413.5 618.75 L 413.5 59 Q 413.5 47 425.5 47 L 521 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_expected_media.user_id → users.id</title></path>
-<path class="relationship" d="M 1432.75 1157.25 L 1411.88 1157.25 Q 1399.88 1157.25 1399.88 1145.25 L 1399.88 955.5 Q 1399.88 943.5 1387.88 943.5 L 1367 943.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_media.media_id → media.id</title></path>
-<path class="relationship" d="M 1432.75 1131.25 L 1419.55 1131.25 Q 1408.75 1131.25 1408.75 1120.45 L 1408.75 974.306 Q 1408.75 967.5 1415.56 967.5 L 1420.47 967.5 Q 1423.88 967.5 1423.88 964.097 L 1423.88 825.25 Q 1423.88 813.25 1411.88 813.25 L 806.75 813.25 Q 794.75 813.25 794.75 801.25 L 794.75 663.5 Q 794.75 651.5 782.75 651.5 L 608.587 651.5 Q 599.25 651.5 599.25 642.163 L 599.25 640.087 Q 599.25 630.75 589.913 630.75 L 378.75 630.75 Q 366.75 630.75 366.75 618.75 L 366.75 434.5 Q 366.75 422.5 354.75 422.5 L 334.75 422.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_media.request_id → job_request.id</title></path>
-<path class="relationship" d="M 334.75 500.5 L 347.95 500.5 Q 358.75 500.5 358.75 511.3 L 358.75 796.812 Q 358.75 805.25 367.188 805.25 L 369.062 805.25 Q 377.5 805.25 377.5 796.812 L 377.5 751.25 Q 377.5 748.25 380.5 748.25 L 818.75 748.25 Q 830.75 748.25 830.75 760.25 L 830.75 801.25 Q 830.75 813.25 842.75 813.25 L 1006 813.25 Q 1018 813.25 1018 825.25 L 1018 932.7 Q 1018 943.5 1028.8 943.5 L 1042 943.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#zero-many-left)"><title>job_request.processing_media_id → media.id</title></path>
-<path class="relationship" d="M 334.75 656.5 L 357.962 656.5 Q 358.75 656.5 358.75 655.712 L 358.75 655.538 Q 358.75 654.75 359.538 654.75 L 575.25 654.75 Q 587.25 654.75 587.25 642.75 L 587.25 304 Q 587.25 292 599.25 292 L 1192.75 292 Q 1204.75 292 1204.75 280 L 1204.75 59 Q 1204.75 47 1216.75 47 L 1635.75 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>job_request.theme_id → themes.id</title></path>
-<path class="relationship" d="M 334.75 630.5 L 415.875 630.5 Q 427.875 630.5 427.875 618.5 L 427.875 59 Q 427.875 47 439.875 47 L 521 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>job_request.user_id → users.id</title></path>
-<path class="relationship" d="M 1635.75 604.75 L 1322.75 604.75 Q 1310.75 604.75 1310.75 592.75 L 1310.75 460.5 Q 1310.75 448.5 1298.75 448.5 L 638.95 448.5 Q 627.25 448.5 627.25 436.8 L 627.25 434.2 Q 627.25 422.5 615.55 422.5 L 334.75 422.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_result.request_id → job_request.id</title></path>
-<path class="relationship" d="M 1635.75 630.75 L 1513.38 630.75 Q 1501.38 630.75 1501.38 642.75 L 1501.38 931.5 Q 1501.38 943.5 1489.38 943.5 L 1367 943.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_result.result_media_id → media.id</title></path>
-<path class="relationship" d="M 1567.25 333.5 L 1589.5 333.5 Q 1601.5 333.5 1601.5 321.5 L 1601.5 59 Q 1601.5 47 1613.5 47 L 1635.75 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>styles.theme_id → themes.id</title></path>
-<path class="relationship" d="M 2156.75 813.25 L 1720 813.25 Q 1708 813.25 1708 825.25 L 1708 1567.5 Q 1708 1579.5 1696 1579.5 L 1259.25 1579.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>theme_collection_themes.theme_collection_id → theme_collections.id</title></path>
-<path class="relationship" d="M 2156.75 839.25 L 2021.75 839.25 Q 2009.75 839.25 2009.75 827.25 L 2009.75 59 Q 2009.75 47 1997.75 47 L 1862.75 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>theme_collection_themes.theme_id → themes.id</title></path>
-<path class="relationship" d="M 1635.75 203 L 1238.88 203 Q 1226.88 203 1226.88 191 L 1226.88 59 Q 1226.88 47 1214.88 47 L 818 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#zero-many-right)"><title>themes.owner_user_id → users.id</title></path>
-<path class="relationship" d="M 906.25 1345 L 925.75 1345 Q 937.75 1345 937.75 1357 L 937.75 1567.5 Q 937.75 1579.5 949.75 1579.5 L 969.25 1579.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>user_theme_collections.theme_collection_id → theme_collections.id</title></path>
-<path class="relationship" d="M 906.25 1319 L 919.45 1319 Q 930.25 1319 930.25 1308.2 L 930.25 825.25 Q 930.25 813.25 918.25 813.25 L 854 813.25 Q 842 813.25 842 801.25 L 842 57.8 Q 842 47 831.2 47 L 818 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>user_theme_collections.user_id → users.id</title></path>
-<path class="relationship" d="M 334.75 448.5 L 371.05 448.5 Q 382.75 448.5 382.75 436.8 L 382.75 434.2 Q 382.75 422.5 371.05 422.5 L 334.75 422.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#zero-many-left)"><title>job_request.parent_request_id → job_request.id</title></path>
-<g transform="translate(0 0)"><rect width="234" height="190" rx="10" fill="#1b212b" stroke="#2b333f"/>
-<path d="M0 34 V10 a10 10 0 0 1 10 -10 H224 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
-<text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">api_tokens</text>
+<path class="relationship" d="M 1563 333.5 L 867 333.5 Q 855 333.5 855 345.5 L 855 410.5 Q 855 422.5 843 422.5 L 147 422.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_events.job_id → job_request.id</title></path>
+<path class="relationship" d="M 203 896.75 L 187 896.75 Q 175 896.75 175 884.75 L 175 434.5 Q 175 422.5 163 422.5 L 147 422.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_expected_media.request_id → job_request.id</title></path>
+<path class="relationship" d="M 1302.5 422.5 L 724.75 422.5 L 724.75 422.5 L 147 422.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_media.request_id → job_request.id</title></path>
+<path class="relationship" d="M 1114.75 735 L 642.875 735 Q 630.875 735 630.875 723 L 630.875 434.5 Q 630.875 422.5 618.875 422.5 L 147 422.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_result.request_id → job_request.id</title></path>
+<path class="relationship" d="M 514 1026.75 L 831.125 1026.75 Q 843.125 1026.75 843.125 1014.75 L 843.125 955.5 Q 843.125 943.5 855.125 943.5 L 1172.25 943.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#zero-many-left)"><title>job_expected_media.media_id → media.id</title></path>
+<path class="relationship" d="M 1501.5 448.5 L 1500.44 448.5 Q 1499.38 448.5 1499.38 449.562 L 1499.38 942.438 Q 1499.38 943.5 1498.31 943.5 L 1497.25 943.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>job_media.media_id → media.id</title></path>
+<path class="relationship" d="M 147 500.5 L 647.625 500.5 Q 659.625 500.5 659.625 512.5 L 659.625 931.5 Q 659.625 943.5 671.625 943.5 L 1172.25 943.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#zero-many-left)"><title>job_request.processing_media_id → media.id</title></path>
+<path class="relationship" d="M 1114.75 761 L 1131.5 761 Q 1143.5 761 1143.5 773 L 1143.5 931.5 Q 1143.5 943.5 1155.5 943.5 L 1172.25 943.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>job_result.result_media_id → media.id</title></path>
+<path class="relationship" d="M 1896.25 813.25 L 1589.75 813.25 Q 1577.75 813.25 1577.75 825.25 L 1577.75 1567.5 Q 1577.75 1579.5 1565.75 1579.5 L 1259.25 1579.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>theme_collection_themes.theme_collection_id → theme_collections.id</title></path>
+<path class="relationship" d="M 781.5 1214.75 L 863.375 1214.75 Q 875.375 1214.75 875.375 1226.75 L 875.375 1567.5 Q 875.375 1579.5 887.375 1579.5 L 969.25 1579.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>user_theme_collections.theme_collection_id → theme_collections.id</title></path>
+<path class="relationship" d="M 147 656.5 L 1038.38 656.5 Q 1050.38 656.5 1050.38 644.5 L 1050.38 59 Q 1050.38 47 1062.38 47 L 1953.75 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>job_request.theme_id → themes.id</title></path>
+<path class="relationship" d="M 1953.75 463.75 L 1953.75 463.75 L 1953.75 47 L 1953.75 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>styles.theme_id → themes.id</title></path>
+<path class="relationship" d="M 1896.25 839.25 L 1913 839.25 Q 1925 839.25 1925 827.25 L 1925 59 Q 1925 47 1937 47 L 1953.75 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>theme_collection_themes.theme_id → themes.id</title></path>
+<path class="relationship" d="M 911.75 -187.5 L 876.875 -187.5 Q 864.875 -187.5 864.875 -175.5 L 864.875 35 Q 864.875 47 852.875 47 L 818 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>api_tokens.user_id → users.id</title></path>
+<path class="relationship" d="M 269 125 L 383 125 Q 395 125 395 113 L 395 59 Q 395 47 407 47 L 521 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#zero-many-left)"><title>domain_event_outbox.owner_user_id → users.id</title></path>
+<path class="relationship" d="M 514 922.75 L 515.75 922.75 Q 517.5 922.75 517.5 921 L 517.5 48.75 Q 517.5 47 519.25 47 L 521 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>job_expected_media.user_id → users.id</title></path>
+<path class="relationship" d="M 147 630.5 L 322 630.5 Q 334 630.5 334 618.5 L 334 59 Q 334 47 346 47 L 521 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-left)"><title>job_request.user_id → users.id</title></path>
+<path class="relationship" d="M 1953.75 203 L 1397.88 203 Q 1385.88 203 1385.88 191 L 1385.88 59 Q 1385.88 47 1373.88 47 L 818 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#zero-many-right)"><title>themes.owner_user_id → users.id</title></path>
+<path class="relationship" d="M 781.5 1188.75 L 663.25 1188.75 Q 651.25 1188.75 651.25 1176.75 L 651.25 59 Q 651.25 47 639.25 47 L 521 47" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#many-right)"><title>user_theme_collections.user_id → users.id</title></path>
+<path class="relationship" d="M 147 448.5 L 183 448.5 Q 195 448.5 195 436.5 L 195 434.5 Q 195 422.5 183 422.5 L 147 422.5" fill="none" stroke="#5d6b7d" stroke-width="1.5" marker-start="url(#zero-many-left)"><title>job_request.parent_request_id → job_request.id</title></path>
+<g transform="translate(0 0)"><rect width="269" height="268" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<path d="M0 34 V10 a10 10 0 0 1 10 -10 H259 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
+<text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">domain_event_outbox</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
 <text x="25" y="47" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
+<text x="39" y="47" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
 <text x="70" y="47" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">id</text>
-<text x="222" y="47" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
-<rect x="1" y="60" width="232" height="26" fill="#1e2530"/>
-<text x="10" y="73" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
-<text x="39" y="73" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
-<text x="70" y="73" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">user_id</text>
-<text x="222" y="73" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
-<text x="25" y="99" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
-<text x="39" y="99" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
-<text x="70" y="99" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">token_hash</text>
-<text x="222" y="99" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(128)</text>
-<rect x="1" y="112" width="232" height="26" fill="#1e2530"/>
-<text x="70" y="125" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">created_at</text>
-<text x="222" y="125" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
-<text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">expires_at</text>
-<text x="222" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
-<rect x="1" y="164" width="232" height="26" fill="#1e2530"/>
-<text x="70" y="177" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">access</text>
-<text x="222" y="177" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">jsonb</text>
+<text x="257" y="47" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<rect x="1" y="60" width="267" height="26" fill="#1e2530"/>
+<text x="70" y="73" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">aggregate_type</text>
+<text x="257" y="73" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(64)</text>
+<text x="70" y="99" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">aggregate_id</text>
+<text x="257" y="99" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<rect x="1" y="112" width="267" height="26" fill="#1e2530"/>
+<text x="10" y="125" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
+<text x="70" y="125" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">owner_user_id</text>
+<text x="257" y="125" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">event_type</text>
+<text x="257" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(64)</text>
+<rect x="1" y="164" width="267" height="26" fill="#1e2530"/>
+<text x="70" y="177" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">schema_version</text>
+<text x="257" y="177" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">integer</text>
+<text x="70" y="203" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">created_at</text>
+<text x="257" y="203" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<rect x="1" y="216" width="267" height="26" fill="#1e2530"/>
+<text x="70" y="229" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">delivered_at</text>
+<text x="257" y="229" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<text x="25" y="255" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">IDX</text>
+<text x="50" y="255" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">id WHERE delivered_at IS NULL</text>
 </g>
 <g transform="translate(521 0)"><rect width="297" height="268" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H287 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
@@ -77,37 +82,32 @@
 <text x="25" y="255" dominant-baseline="middle" font-size="8" font-weight="700" fill="#d98cff">TRG</text>
 <text x="50" y="255" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">users_set_updated_at</text>
 </g>
-<g transform="translate(911.75 -260.5)"><rect width="269" height="268" rx="10" fill="#1b212b" stroke="#2b333f"/>
-<path d="M0 34 V10 a10 10 0 0 1 10 -10 H259 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
-<text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">domain_event_outbox</text>
+<g transform="translate(911.75 -260.5)"><rect width="234" height="190" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<path d="M0 34 V10 a10 10 0 0 1 10 -10 H224 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
+<text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">api_tokens</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
 <text x="25" y="47" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
-<text x="39" y="47" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
 <text x="70" y="47" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">id</text>
-<text x="257" y="47" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
-<rect x="1" y="60" width="267" height="26" fill="#1e2530"/>
-<text x="70" y="73" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">aggregate_type</text>
-<text x="257" y="73" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(64)</text>
-<text x="70" y="99" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">aggregate_id</text>
-<text x="257" y="99" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
-<rect x="1" y="112" width="267" height="26" fill="#1e2530"/>
-<text x="10" y="125" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
-<text x="70" y="125" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">owner_user_id</text>
-<text x="257" y="125" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
-<text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">event_type</text>
-<text x="257" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(64)</text>
-<rect x="1" y="164" width="267" height="26" fill="#1e2530"/>
-<text x="70" y="177" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">schema_version</text>
-<text x="257" y="177" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">integer</text>
-<text x="70" y="203" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">created_at</text>
-<text x="257" y="203" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
-<rect x="1" y="216" width="267" height="26" fill="#1e2530"/>
-<text x="70" y="229" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">delivered_at</text>
-<text x="257" y="229" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
-<text x="25" y="255" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">IDX</text>
-<text x="50" y="255" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">id WHERE delivered_at IS NULL</text>
+<text x="222" y="47" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<rect x="1" y="60" width="232" height="26" fill="#1e2530"/>
+<text x="10" y="73" dominant-baseline="middle" font-size="9" font-weight="700" fill="#5aa7ff">FK</text>
+<text x="39" y="73" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
+<text x="70" y="73" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">user_id</text>
+<text x="222" y="73" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">bigint</text>
+<text x="25" y="99" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">UQ</text>
+<text x="39" y="99" dominant-baseline="middle" font-size="8" font-weight="700" fill="#7eb68a">IX</text>
+<text x="70" y="99" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">token_hash</text>
+<text x="222" y="99" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">varchar(128)</text>
+<rect x="1" y="112" width="232" height="26" fill="#1e2530"/>
+<text x="70" y="125" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">created_at</text>
+<text x="222" y="125" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">expires_at</text>
+<text x="222" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
+<rect x="1" y="164" width="232" height="26" fill="#1e2530"/>
+<text x="70" y="177" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">access</text>
+<text x="222" y="177" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">jsonb</text>
 </g>
-<g transform="translate(911.75 578.5)"><rect width="227" height="164" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<g transform="translate(1563 260.5)"><rect width="227" height="164" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H217 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">job_events</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
@@ -127,7 +127,7 @@
 <text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">created_at</text>
 <text x="215" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
 </g>
-<g transform="translate(1375.25 260.5)"><rect width="192" height="164" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<g transform="translate(1953.75 390.75)"><rect width="192" height="164" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H182 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">styles</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
@@ -147,7 +147,7 @@
 <text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">data</text>
 <text x="180" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">jsonb</text>
 </g>
-<g transform="translate(1635.75 0)"><rect width="227" height="268" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<g transform="translate(1953.75 0)"><rect width="227" height="268" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H217 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">themes</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
@@ -176,7 +176,7 @@
 <text x="25" y="255" dominant-baseline="middle" font-size="8" font-weight="700" fill="#d98cff">TRG</text>
 <text x="50" y="255" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">themes_set_updated_at</text>
 </g>
-<g transform="translate(-130.25 375.5)"><rect width="465" height="580" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<g transform="translate(-318 375.5)"><rect width="465" height="580" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H455 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">job_request</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
@@ -242,7 +242,7 @@
 <text x="25" y="567" dominant-baseline="middle" font-size="8" font-weight="700" fill="#d98cff">TRG</text>
 <text x="50" y="567" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">job_request_set_updated_at</text>
 </g>
-<g transform="translate(390.75 766.25)"><rect width="311" height="424" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<g transform="translate(203 823.75)"><rect width="311" height="424" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H301 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">job_expected_media</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
@@ -287,7 +287,7 @@
 <text x="25" y="411" dominant-baseline="middle" font-size="8" font-weight="700" fill="#d98cff">TRG</text>
 <text x="50" y="411" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">job_expected_media_set_updated_at</text>
 </g>
-<g transform="translate(1042 896.5)"><rect width="325" height="398" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<g transform="translate(1172.25 896.5)"><rect width="325" height="398" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H315 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">media</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
@@ -329,7 +329,7 @@
 <text x="25" y="385" dominant-baseline="middle" font-size="8" font-weight="700" fill="#d98cff">TRG</text>
 <text x="50" y="385" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">media_set_updated_at</text>
 </g>
-<g transform="translate(1432.75 1084.25)"><rect width="199" height="138" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<g transform="translate(1302.5 375.5)"><rect width="199" height="138" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H189 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">job_media</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
@@ -345,7 +345,7 @@
 <text x="25" y="125" dominant-baseline="middle" font-size="8" font-weight="700" fill="#b48cff">PK</text>
 <text x="50" y="125" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">request_id, media_id</text>
 </g>
-<g transform="translate(1635.75 505.75)"><rect width="241" height="164" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<g transform="translate(1114.75 636)"><rect width="241" height="164" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H231 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">job_result</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
@@ -368,7 +368,7 @@
 <text x="70" y="151" dominant-baseline="middle" font-size="13" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">completed_at</text>
 <text x="229" y="151" dominant-baseline="middle" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#6f7b8a">timestamptz</text>
 </g>
-<g transform="translate(2156.75 766.25)"><rect width="262" height="112" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<g transform="translate(1896.25 766.25)"><rect width="262" height="112" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H252 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">theme_collection_themes</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
@@ -405,7 +405,7 @@
 <text x="25" y="203" dominant-baseline="middle" font-size="8" font-weight="700" fill="#d98cff">TRG</text>
 <text x="50" y="203" dominant-baseline="middle" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#c4ccd6">theme_collections_set_updated_at</text>
 </g>
-<g transform="translate(651.25 1272)"><rect width="255" height="138" rx="10" fill="#1b212b" stroke="#2b333f"/>
+<g transform="translate(781.5 1141.75)"><rect width="255" height="138" rx="10" fill="#1b212b" stroke="#2b333f"/>
 <path d="M0 34 V10 a10 10 0 0 1 10 -10 H245 a10 10 0 0 1 10 10 V34 Z" fill="#222c3a"/>
 <text x="12" y="17" dominant-baseline="middle" font-weight="600" font-size="14" fill="#e8edf4">user_theme_collections</text>
 <text x="10" y="47" dominant-baseline="middle" font-size="9" font-weight="700" fill="#f5c451">PK</text>
