@@ -40,8 +40,7 @@ class SvgErdLayoutTest(unittest.TestCase):
         self.assertIn('marker-start="url(#zero-many-left)"', svg)
         self.assertNotIn('marker-end=', svg)
         self.assertIn('orient="0"', svg)
-        self.assertIn(" L ", svg)
-        self.assertNotIn(" C ", svg)
+        self.assertIn(" C ", svg)
 
     def test_svg_renders_self_referencing_foreign_key_as_a_loop(self) -> None:
         table = db_schema.Table("job_request", [
@@ -78,31 +77,6 @@ class SvgErdLayoutTest(unittest.TestCase):
         route = db_schema.relationship_route(relationship, positioned, 1, 1)
         self.assertEqual(96, route.start_control[0] - route.start[0])
         self.assertEqual(96, route.end_control[0] - route.end[0])
-
-    def test_vertically_aligned_route_keeps_a_wide_side_corridor(self) -> None:
-        parent = db_schema.Table("parent", [db_schema.Column("id", "bigint", primary=True)])
-        child = db_schema.Table("child", [db_schema.Column("parent_id", "bigint", reference=("parent", "id"))])
-        positioned = [
-            db_schema.PositionedTable(child, db_schema.Rect(0, 200, 180, 60)),
-            db_schema.PositionedTable(parent, db_schema.Rect(0, 0, 180, 60)),
-        ]
-        relationship = db_schema.relationships([child, parent])[0]
-        route = db_schema.relationship_route(relationship, {item.table.name: item for item in positioned}, 1, 1)
-        points = db_schema.compact_orthogonal_points(route, positioned)
-        corridor = max(abs(point[0] - route.start[0]) for point in points)
-        self.assertGreaterEqual(corridor, db_schema.VERTICAL_CONNECTOR_CONTROL_OFFSET)
-
-    def test_horizontally_separated_route_uses_a_balanced_corridor(self) -> None:
-        parent = db_schema.Table("parent", [db_schema.Column("id", "bigint", primary=True)])
-        child = db_schema.Table("child", [db_schema.Column("parent_id", "bigint", reference=("parent", "id"))])
-        positioned = [
-            db_schema.PositionedTable(child, db_schema.Rect(0, 0, 180, 60)),
-            db_schema.PositionedTable(parent, db_schema.Rect(300, 120, 180, 60)),
-        ]
-        relationship = db_schema.relationships([child, parent])[0]
-        route = db_schema.relationship_route(relationship, {item.table.name: item for item in positioned}, 1, -1)
-        points = db_schema.compact_orthogonal_points(route, positioned)
-        self.assertEqual(240, points[1][0])
 
     def test_layout_is_deterministic_and_cards_do_not_overlap(self) -> None:
         tables = db_schema.parse_ddl('CREATE TABLE parent(id bigint PRIMARY KEY); '

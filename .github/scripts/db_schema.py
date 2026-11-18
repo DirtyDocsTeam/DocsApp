@@ -514,19 +514,6 @@ def legacy_relationship_routes(positioned: list[PositionedTable]) -> list[Relati
     return routes
 
 
-def compact_orthogonal_points(route: RelationshipRoute, positioned: list[PositionedTable]) -> tuple[tuple[float, float], ...]:
-    """Choose a balanced corridor for separate cards and a port corridor for overlaps."""
-    if route.start[1] == route.end[1]:
-        return route.start,route.end
-    by_name={item.table.name:item for item in positioned}
-    child=by_name[route.relationship.child].rect
-    parent=by_name[route.relationship.parent].rect
-    horizontally_separated=(child.x+child.width <= parent.x or parent.x+parent.width <= child.x)
-    corridor_x=((route.start[0]+route.end[0])/2 if horizontally_separated
-                else route.start_control[0])
-    return route.start,(corridor_x,route.start[1]),(corridor_x,route.end[1]),route.end
-
-
 def self_relationship_routes(positioned: list[PositionedTable]) -> list[RelationshipRoute]:
     """Render a self-FK as a compact loop on the right side of its own card."""
     by_name={item.table.name:item for item in positioned}
@@ -548,6 +535,11 @@ def self_relationship_routes(positioned: list[PositionedTable]) -> list[Relation
 
 
 def relationship_routes(positioned: list[PositionedTable], routing_passes: int = 2) -> list[RelationshipRoute]:
+    if len(positioned) <= 24 or not routing_passes:
+        routes=legacy_relationship_routes(positioned)
+        routes.extend(self_relationship_routes(positioned))
+        return routes
+
     def factory(rel, points, child_side, parent_side):
         return RelationshipRoute(rel,points[0],points[1],points[-2],points[-1],child_side,parent_side,points)
 
@@ -657,16 +649,10 @@ def preoptimized_order(tables: list[Table], seed: str | None = None) -> list[Tab
 def layout_variant(tables: list[Table], seed: str | None = None,
                    fixed_positions: dict[str, tuple[float, float]] | None = None) -> list[PositionedTable]:
     """Deterministic grid start plus bounded local improvement for the ERD score."""
-    # Routing is an exact finalisation step.  Candidate placement needs only a cheap,
-    # stable copy of the compact orthogonal geometry; invoking the obstacle router
-    # for each candidate is quadratic in the number of optimisation proposals.
+    # Routing is an exact finalisation step. Candidate placement uses the stable
+    # compact geometry; invoking the obstacle router per proposal is quadratic.
     def candidate_score(items: list[PositionedTable]) -> LayoutScore:
-        routes=[]
-        for route in legacy_relationship_routes(items):
-            points=compact_orthogonal_points(route,items)
-            routes.append(RelationshipRoute(route.relationship,points[0],points[1],points[-2],points[-1],
-                                           route.child_side,route.parent_side,points))
-        return score_layout(items,routes)
+        return score_layout(items,legacy_relationship_routes(items))
 
     degrees = {table.name: 0 for table in tables}
     for relationship in routed_relationships(tables):
