@@ -31,7 +31,7 @@ object ThemeProjections {
                 "id" to STYLES.ID,
                 "type" to STYLES.TYPE,
                 "exampleText" to STYLES.EXAMPLE_TEXT,
-                "styleDescription" to jsonb(STYLES.DATA, StyleDescription.serializer(), json)
+                "styleDescription" to STYLES.DATA.convertFrom { raw -> raw?.data()?.let(::StyleDescription) }
             )
         ),
         required = setOf("id"),

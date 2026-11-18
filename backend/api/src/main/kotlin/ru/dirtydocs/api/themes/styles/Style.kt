@@ -15,5 +15,5 @@ open class Style(
     val exampleText: String
         get() = required("exampleText")
     val styleDescription: StyleDescription
-        get() = value("styleDescription")
+        get() = required("styleDescription")
 }
