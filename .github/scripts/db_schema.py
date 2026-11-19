@@ -535,7 +535,7 @@ def self_relationship_routes(positioned: list[PositionedTable]) -> list[Relation
 
 
 def relationship_routes(positioned: list[PositionedTable], routing_passes: int = 2) -> list[RelationshipRoute]:
-    if len(positioned) <= 24 or not routing_passes:
+    if not routing_passes:
         routes=legacy_relationship_routes(positioned)
         routes.extend(self_relationship_routes(positioned))
         return routes
@@ -547,16 +547,20 @@ def relationship_routes(positioned: list[PositionedTable], routing_passes: int =
         score=score_layout(positioned,routes)
         return score.table_intersections,score.line_intersections,score.total
 
-    routes=route_all(positioned,routed_relationships([item.table for item in positioned]),
-                     max(1,routing_passes),factory,evaluate)
-    routes.extend(self_relationship_routes(positioned))
+    routes=route_all(positioned,routed_relationships([item.table for item in positioned]),routing_passes,factory,evaluate)
     zones=tuple(merge_junctions(positioned,{r.relationship:(r.waypoints,r.child_side,r.parent_side) for r in routes}))
     radii=shared_corner_radii({r.relationship:(r.waypoints,r.child_side,r.parent_side) for r in routes},positioned,zones)
     endpoints=Counter(key for route in routes for key in route_endpoint_keys(route))
     result=[]
     for route in routes:
-        path=rounded_orthogonal_path(route.waypoints,radii)
-        result.append(replace(route,svg_path=path,merge_zones=zones))
+        path,geometry=smooth_terminal_path(route.waypoints,route.child_side,route.parent_side,
+                                           positioned,route.relationship.child,route.relationship.parent,
+                                           endpoints[(route.relationship.child,route.relationship.column,route.child_side)]>1,
+                                           endpoints[(route.relationship.parent,route.relationship.parent_column,route.parent_side)]>1,
+                                           [(key,rect) for key,rect in zones if key not in endpoint_keys(route.relationship)],
+                                           [(key,rect) for key,rect in zones if key in endpoint_keys(route.relationship)],radii)
+        result.append(replace(route,waypoints=geometry,svg_path=path,merge_zones=zones))
+    result.extend(self_relationship_routes(positioned))
     return result
 
 

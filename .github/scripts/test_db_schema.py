@@ -6,6 +6,7 @@ import importlib.util
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -40,7 +41,7 @@ class SvgErdLayoutTest(unittest.TestCase):
         self.assertIn('marker-start="url(#zero-many-left)"', svg)
         self.assertNotIn('marker-end=', svg)
         self.assertIn('orient="0"', svg)
-        self.assertIn(" C ", svg)
+        self.assertIn(" L ", svg)
 
     def test_svg_renders_self_referencing_foreign_key_as_a_loop(self) -> None:
         table = db_schema.Table("job_request", [
@@ -50,6 +51,17 @@ class SvgErdLayoutTest(unittest.TestCase):
         svg = db_schema.render_svg([table])
         self.assertIn("job_request.parent_request_id → job_request.id", svg)
         self.assertIn('Q ', svg)
+
+    def test_global_router_smooths_terminal_segments(self) -> None:
+        parent = db_schema.Table("parent", [db_schema.Column("id", "bigint", primary=True)])
+        child = db_schema.Table("child", [db_schema.Column("parent_id", "bigint", reference=("parent", "id"))])
+        positioned = [
+            db_schema.PositionedTable(child, db_schema.Rect(0, 120, 180, 60)),
+            db_schema.PositionedTable(parent, db_schema.Rect(300, 0, 180, 60)),
+        ]
+        with patch.object(db_schema, "smooth_terminal_path", wraps=db_schema.smooth_terminal_path) as smooth:
+            db_schema.relationship_routes(positioned, routing_passes=1)
+        smooth.assert_called_once()
 
     def test_segment_crossing_excludes_shared_endpoints(self) -> None:
         self.assertTrue(db_schema.segments_intersect((0, 0), (4, 4), (0, 4), (4, 0)))
