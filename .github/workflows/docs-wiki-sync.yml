@@ -30,6 +30,8 @@ on:
       - ".github/scripts/wiki_sync.py"
       - ".github/scripts/api_docs.py"
       - ".github/scripts/db_schema.py"
+      - ".github/scripts/erd_optimizer.py"
+      - ".github/scripts/sql_schema.py"
       - "backend/api/src/main/resources/db/**"
       - ".github/workflows/docs-wiki-sync.yml"
   workflow_dispatch:
