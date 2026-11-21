@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Сбор контрактов API из кода: REST, GraphQL, gRPC → documentation/api/.
+"""Сбор контрактов API из кода: REST, GraphQL, gRPC → docs/api/.
 
 Что делает:
   * читает правила из `api-docs.toml`: источники → поверхности → include/exclude/artifacts;
@@ -1587,7 +1587,7 @@ def load_config(path: Path) -> Config:
     if not isinstance(output, dict):
         raise SystemExit("api-docs.toml: [output] должен быть таблицей")
     check_keys(output, OUTPUT_KEYS, "output")
-    output_dir = output.get("dir") or "documentation/api"
+    output_dir = output.get("dir") or "docs/api"
 
     sources: list[SourceConfig] = []
     for index, item in enumerate(raw.get("source") or [], start=1):
