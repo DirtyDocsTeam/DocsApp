@@ -32,8 +32,9 @@ S3-шлюз.
 
 | Раздел | Что внутри | Когда открывать |
 |---|---|---|
-| [`design/`](design/README.md) | C4-контекст, расшифровка контейнеров и связей, ERD, черновик DDL | меняете архитектуру или схему БД, ищете границу сервиса |
+| [`design/`](design/README.md) | C4-контекст, расшифровка контейнеров и связей, ERD (SVG + Mermaid), черновик DDL | меняете архитектуру или схему БД, ищете границу сервиса |
 | [`api/`](api/index.md) | контракты REST, GraphQL и gRPC, собранные из кода | нужен контракт эндпоинта, схемы или `.proto` |
+| [`md-spec/`](md-spec/README.md) | собственный диалект Markdown: рамка спецификации и эталоны GFM/GLFM | пишете парсер, валидатор или превью |
 | [`research/`](research/README.md) | исследования под задачи: извлечение стилей из DOCX, перенос подхода «Книга в Markdown», PoC | выбираете подход и нужны проверенные цифры |
 | [`qa/`](qa/README.md) | UserStory; тест-кейсы, чек-листы и отчёты ревью — пока пусто | проверяете приёмку или пишете тест-кейс |
 | [`glossary.md`](glossary.md) | канонические термины предметной области | сомневаетесь, как называется сущность |
@@ -45,11 +46,12 @@ S3-шлюз.
 |---|---|---|
 | Продукт: возможности, ограничения, безопасность, хранение | [`.agents/PROJECT.md`](https://github.com/DirtyDocsTeam/DocsApp/blob/main/.agents/PROJECT.md) | [`design/design.md`](design/design.md), глоссарий |
 | Архитектура | C4-контекст [`design/context.drawio`](design/context.drawio): направление связи задаёт наконечник стрелки, а не подпись | расшифровка в [`design/design.md`](design/design.md); таблица связей там ведётся руками и может отставать — диаграмма важнее |
-| Схема БД | Liquibase-чанжлог [`backend/api/src/main/resources/db/changelog`](https://github.com/DirtyDocsTeam/DocsApp/tree/main/backend/api/src/main/resources/db/changelog) | `design/db.sql` (`make db-schema`), ERD [`design/erd.md`](design/erd.md) (`make db-erd`) |
+| Схема БД | Liquibase-чанжлог [`backend/api/src/main/resources/db/changelog`](https://github.com/DirtyDocsTeam/DocsApp/tree/main/backend/api/src/main/resources/db/changelog) | `design/db.sql` (`make db-schema`), ERD [`design/schema.svg`](design/schema.svg) и [`design/erd.md`](design/erd.md) (`make db-erd`) |
 | Контракты API | код, аннотации и правила [`api-docs.toml`](https://github.com/DirtyDocsTeam/DocsApp/blob/main/api-docs.toml) | страницы `documentation/api/` (`make api-docs`) |
 | Термины | [`glossary.md`](glossary.md) | тексты всех разделов |
 
-Руками не правятся `documentation/api/**`, `design/db.sql` и `design/erd.md`: их перезапишут сборки.
+Руками не правятся `documentation/api/**`, `design/db.sql`, `design/schema.svg` и `design/erd.md`: их
+перезапишут сборки.
 
 ## Состояние проекта
 
@@ -57,6 +59,7 @@ S3-шлюз.
 - Схема БД — черновик: в исходном DDL неполные ограничения (статусы без `CHECK`, токены с уже истёкшим
   сроком), поэтому правда — чанжлог, а не `db.sql`.
 - `documentation/api/` — снимок того, что объявляет код сегодня, а не подписанный контракт.
+- [`md-spec/`](md-spec/README.md) — пока рамка и примеры-эталоны: сам диалект не описан.
 - Открытые решения и открытые вопросы собраны в
   [`PROJECT.md`](https://github.com/DirtyDocsTeam/DocsApp/blob/main/.agents/PROJECT.md) и
   [`design/design.md`](design/design.md).

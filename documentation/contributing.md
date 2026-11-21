@@ -39,7 +39,7 @@
 |---|---|---|
 | `documentation/api/` (REST, GraphQL, gRPC) | `make api-docs` | код и аннотации по правилам [`api-docs.toml`](../api-docs.toml) |
 | `documentation/design/db.sql` | `make db-schema` | Liquibase-чанжлог `backend/api/src/main/resources/db/changelog` |
-| `documentation/design/erd.md` | `make db-erd` | тот же чанжлог |
+| `documentation/design/schema.svg` и `design/erd.md` | `make db-erd` | тот же чанжлог + `design/layout.yaml` для ручных координат |
 
 Эти файлы в репозитории не правятся: меняйте код, аннотации, `.proto` или конфиг и пересобирайте.
 Проверка без записи: `make api-docs-check`, `make db-check`. Прогон DDL на чистой PostgreSQL —
@@ -69,5 +69,5 @@ make api-docs-check    # проверить, что страницы контр�
 - Секретов, токенов, ключей и конфигурации окружений.
 - Документов пользователей и персональных данных: примеры и фикстуры — обезличенные и минимальные.
 - Крупных бинарников и сгенерированных артефактов сборки — для них есть внешнее хранилище.
-- Правок только в вики и правок руками в `documentation/api/`, `design/db.sql`, `design/erd.md` — их
-  перезапишет следующая сборка.
+- Правок только в вики и правок руками в `documentation/api/`, `design/db.sql`, `design/schema.svg`,
+  `design/erd.md` — их перезапишет следующая сборка.

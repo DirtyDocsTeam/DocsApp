@@ -5,7 +5,8 @@ import org.jooq.impl.DSL
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import ru.novari.data.ProjectionContext
+import ru.dirtydocs.data.ProjectionContext
+import ru.dirtydocs.data.Selection
 
 class ThemeProjectionsTest {
     @Test
@@ -40,6 +41,17 @@ class ThemeProjectionsTest {
         assertTrue(themeSql.contains("42"))
         assertTrue(styleSql.contains("theme_id", ignoreCase = true))
         assertTrue(styleSql.contains("user_theme_collections", ignoreCase = true))
+    }
+
+    @Test
+    fun themeOwnerCanReadTheirThemeOutsideACollectionAndDeletedThemesAreHidden() {
+        val sql = DSL.using(SQLDialect.POSTGRES).renderInlined(
+            ThemeProjections.THEME.compile(Selection.of("id"), ProjectionContext(viewerId = 42)).condition,
+        )
+
+        assertTrue(sql.contains("owner_user_id", ignoreCase = true))
+        assertTrue(sql.contains("deleted_at", ignoreCase = true))
+        assertTrue(sql.contains("42"))
     }
 
     @Test

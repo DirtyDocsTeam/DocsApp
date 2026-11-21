@@ -1,8 +1,8 @@
 package ru.dirtydocs.api.themes.styles
 
 import org.jooq.Record
-import ru.novari.data.ProjectionFields
-import ru.novari.data.RecordView
+import ru.dirtydocs.data.ProjectionFields
+import ru.dirtydocs.data.RecordView
 
 open class Style(
     record : Record,
@@ -15,5 +15,5 @@ open class Style(
     val exampleText: String
         get() = required("exampleText")
     val styleDescription: StyleDescription
-        get() = value("styleDescription")
+        get() = required("styleDescription")
 }

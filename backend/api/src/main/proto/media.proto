@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "ru.dirtydocs.api.media";
+option java_outer_classname = "MediaProto";
+
+package media;
+
+service MediaService {
+  // TODO: Implement when Main API <-> S3 Gateway mTLS connectivity is deployed.
+  rpc ExpectMedia (ExpectMediaRequest) returns (ExpectMediaResponse);
+  rpc ConfirmMediaReceipt (ConfirmMediaReceiptRequest) returns (ConfirmMediaReceiptResponse);
+  rpc EvictMedia (EvictMediaRequest) returns (EvictMediaResponse);
+  rpc GetMediaPath (GetMediaPathRequest) returns (GetMediaPathResponse);
+}
+
+message ExpectMediaRequest {
+  string expectation_id = 1;
+  int64 user_id = 2;
+  int64 job_id = 3;
+  string file_hash = 4;
+  string expires_at = 5;
+  string idempotency_key = 6;
+}
+
+message ExpectMediaResponse {
+  bool accepted = 1;
+}
+
+message ConfirmMediaReceiptRequest {
+  string expectation_id = 1;
+  int64 user_id = 2;
+  string file_hash = 3;
+  string mime_type = 4;
+  string storage_path = 5;
+  string public_path = 6;
+  string receipt_key = 7;
+}
+
+message ConfirmMediaReceiptResponse {
+  bool accepted = 1;
+}
+
+message EvictMediaRequest {
+  int64 media_id = 1;
+  string storage_path = 2;
+}
+
+message EvictMediaResponse {
+  bool deleted = 1;
+}
+
+message GetMediaPathRequest {
+  string external_id = 1;
+}
+message GetMediaPathResponse {
+  string storage_path = 1;
+}

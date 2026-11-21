@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "ru.dirtydocs.api.jobs";
+option java_outer_classname = "WorkerProto";
+
+package worker;
+
+service WorkerService {
+  rpc AssignJob (AssignJobRequest) returns (AssignJobResponse);
+  rpc AnnounceJobStatus (AnnounceJobStatusRequest) returns (AnnounceJobStatusResponse);
+}
+
+message AssignJobRequest {
+  int64 job_id = 1;
+  string delivery_key = 2;
+}
+
+message AssignJobResponse {
+  bool accepted = 1;
+}
+
+message AnnounceJobStatusRequest {
+  int64 job_id = 1;
+  string status = 2;
+  string delivery_key = 3;
+}
+
+message AnnounceJobStatusResponse {
+  bool accepted = 1;
+}

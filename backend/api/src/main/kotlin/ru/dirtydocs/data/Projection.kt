@@ -1,4 +1,4 @@
-package ru.novari.data
+package ru.dirtydocs.data
 
 import graphql.schema.DataFetchingEnvironment
 import graphql.schema.DataFetchingFieldSelectionSet

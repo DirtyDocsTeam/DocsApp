@@ -2,8 +2,8 @@ package ru.dirtydocs.api.users.tokens
 
 import org.jooq.Record
 import ru.dirtydocs.api.users.tokens.access.TokenAccessRights
-import ru.novari.data.ProjectionFields
-import ru.novari.data.RecordView
+import ru.dirtydocs.data.ProjectionFields
+import ru.dirtydocs.data.RecordView
 import java.time.OffsetDateTime
 
 open class Token(

@@ -101,7 +101,7 @@ jooq {
                     }
 
                     target.apply {
-                        packageName = "ru.novari.spectra.generated.jooq"
+                        packageName = "ru.dirtydocs.api.generated.jooq"
                         directory = "build/generated-src/jooq/main"
                     }
                 }

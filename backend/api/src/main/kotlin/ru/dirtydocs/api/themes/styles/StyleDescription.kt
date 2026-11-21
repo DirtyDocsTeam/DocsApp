@@ -1,8 +1,4 @@
 package ru.dirtydocs.api.themes.styles
 
-import kotlinx.serialization.Serializable
-
-@Serializable
-data class StyleDescription(
-    val todo: Long
-)
+/** Opaque JSON object retained until each style type receives its typed schema. */
+data class StyleDescription(val raw: String)

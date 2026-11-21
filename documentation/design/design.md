@@ -26,14 +26,14 @@
 
 **Контейнеры внутри границы системы `DirtyDocs`:**
 
-| Контейнер | Технология | Назначение по диаграмме |
-|---|---|---|
-| Ingress | HAProxy | единая точка входа, маршрутизация REST/GraphQL, внешний путь к статике и медиа |
-| IDProvider | Keycloak | идентификация пользователей, федерация с внешними IDP |
-| Main API Plane | Quarkus | основное API приложения: приём и оркестрация задач |
-| S3 Gateway Plane | Go | контролируемый прямой доступ клиентов к объектному хранилищу |
-| Main Database | PostgreSQL | пользователи, стили, задачи, результаты, аудит |
-| Object storage | SeaweedFS | пользовательские медиа, сгенерированные артефакты, статика сайта |
+| Контейнер                   | Технология     | Назначение по диаграмме                                                                              |
+| --------------------------- | -------------- | ---------------------------------------------------------------------------------------------------- |
+| Ingress                     | HAProxy        | единая точка входа, маршрутизация REST/GraphQL, внешний путь к статике и медиа                       |
+| IDProvider                  | Keycloak       | идентификация пользователей, федерация с внешними IDP                                                |
+| Main API Plane              | Quarkus        | основное API приложения: приём и оркестрация задач                                                   |
+| S3 Gateway Plane            | Go             | контролируемый прямой доступ клиентов к объектному хранилищу                                         |
+| Main Database               | PostgreSQL     | пользователи, стили, задачи, результаты, аудит                                                       |
+| Object storage              | SeaweedFS      | пользовательские медиа, сгенерированные артефакты, статика сайта                                     |
 | Worker Pool `[Deployments]` | C#/C++, Python | `WorkerC-N` конвертация, `WorkerV-N` валидация, `WorkerT-N` шаблонизация, `WorkerG-N` генерация темы |
 
 Кто с кем разговаривает — в порядке диаграммы, сверху вниз. `—` вместо стрелки значит, что на ребре
@@ -56,13 +56,16 @@
 | API Client → Ingress              | `REST/GQL`                                     |
 | Ingress → IDProvider              | `REST [OIDC]`                                  |
 | Ingress → Main API Plane          | `GQL [Main work]`                              |
+| Ingress → Main API Plane          | `GQL [WebSocket subscriptions]`                |
 | Ingress → S3 Gateway Plane        | `S3 (Ext path) [Web static] [Media artifacts]` |
 | IDProvider → External IDP         | `REST [ID data]`                               |
 | IDProvider → Main Database        | `SQLConn [ID data]`                            |
 | Main API Plane → IDProvider       | `REST [Token validate]`                        |
 | Main API Plane → Main Database    | `SQLConn [App data] [Job data]`                |
 | Main API Plane → Worker Pool      | `gRPC [Job assign]`                            |
+| Main API Plane → S3 Gateway Plane | `gRPC [Expect media] [Evict media]`            |
 | S3 Gateway Plane → Main API Plane | `gRPC [ID -> S3://path] [Token validate]`      |
+| S3 Gateway Plane → Main API Plane | `gRPC [Media receipt]`                         |
 | S3 Gateway Plane → Object storage | `S3 (Int path) [Web static] [Media artifacts]` |
 | Worker Pool → Main API Plane      | `gRPC [Announce]`                              |
 | Worker Pool → Object storage      | `S3 [Media artifacts]`                         |
@@ -78,12 +81,13 @@ C4-диаграмма — источник правды; ниже — где о�
 
 ## Модель данных
 
-Диаграмма — на отдельной странице: **[ERD: модель данных](erd.md)** (Mermaid, рендерится в GitHub
-и вики). Сейчас это 12 таблиц и 15 внешних ключей.
+Диаграмма — на отдельной странице: **[ERD: модель данных](schema.svg)** (локально сгенерированная
+SVG с автоматической раскладкой). Текстовый вариант — [erd.md](erd.md) (Mermaid для GitHub и вики).
+Сейчас это 12 таблиц и 15 внешних ключей.
 
 Схема живёт в Liquibase-чанжлоге `backend/api/src/main/resources/db/changelog/`: из него собираются
-и [`db.sql`](db.sql) (`make db-schema`), и [`erd.md`](erd.md) (`make db-erd`). Оба артефакта
-производные: правки вносим в чанжлог, `make db-check` в CI ловит расхождение.
+и [`db.sql`](db.sql) (`make db-schema`), и [`schema.svg`](schema.svg) с [`erd.md`](erd.md)
+(`make db-erd`). Все артефакты производные: правки вносим в чанжлог, `make db-check` в CI ловит расхождение.
 
 ## Открытые вопросы
 
