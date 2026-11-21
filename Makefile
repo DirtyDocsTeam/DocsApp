@@ -1,9 +1,9 @@
 # DocsApp — короткие команды для документации и контрактов API.
 #
 #   make help           — список целей
-#   make api-docs       — пересобрать контракты REST/GraphQL/gRPC в documentation/api/
+#   make api-docs       — пересобрать контракты REST/GraphQL/gRPC в docs/api/
 #   make api-docs-check — проверить, что страницы контрактов соответствуют коду
-#   make db-schema      — пересобрать documentation/design/db.sql из Liquibase-чанжлога
+#   make db-schema      — пересобрать docs/design/db.sql из Liquibase-чанжлога
 #   make db-check       — проверить, что db.sql соответствует чанжлогу
 #   make db-erd         — пересобрать ERD (SVG + Mermaid) из Liquibase-чанжлога
 #   make db-verify      — прогнать db.sql на чистой PostgreSQL в docker
@@ -23,13 +23,13 @@ DB_SCHEMA := .github/scripts/db_schema.py
 help: ## Показать этот список
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
-api-docs: ## Собрать контракты REST/GraphQL/gRPC в documentation/api/
+api-docs: ## Собрать контракты REST/GraphQL/gRPC в docs/api/
 	$(PYTHON) $(API_DOCS)
 
 api-docs-check: ## Проверить, что страницы контрактов соответствуют коду
 	$(PYTHON) $(API_DOCS) --check
 
-db-schema: ## Пересобрать documentation/design/db.sql из Liquibase-чанжлога
+db-schema: ## Пересобрать docs/design/db.sql из Liquibase-чанжлога
 	$(PYTHON) $(DB_SCHEMA)
 
 db-check: ## Проверить, что db.sql соответствует чанжлогу

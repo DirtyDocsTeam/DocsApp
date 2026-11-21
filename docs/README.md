@@ -47,10 +47,10 @@ S3-шлюз.
 | Продукт: возможности, ограничения, безопасность, хранение | [`.agents/PROJECT.md`](https://github.com/DirtyDocsTeam/DocsApp/blob/main/.agents/PROJECT.md) | [`design/design.md`](design/design.md), глоссарий |
 | Архитектура | C4-контекст [`design/context.drawio`](design/context.drawio): направление связи задаёт наконечник стрелки, а не подпись | расшифровка в [`design/design.md`](design/design.md); таблица связей там ведётся руками и может отставать — диаграмма важнее |
 | Схема БД | Liquibase-чанжлог [`backend/api/src/main/resources/db/changelog`](https://github.com/DirtyDocsTeam/DocsApp/tree/main/backend/api/src/main/resources/db/changelog) | `design/db.sql` (`make db-schema`), ERD [`design/schema.svg`](design/schema.svg) и [`design/erd.md`](design/erd.md) (`make db-erd`) |
-| Контракты API | код, аннотации и правила [`api-docs.toml`](https://github.com/DirtyDocsTeam/DocsApp/blob/main/api-docs.toml) | страницы `documentation/api/` (`make api-docs`) |
+| Контракты API | код, аннотации и правила [`api-docs.toml`](https://github.com/DirtyDocsTeam/DocsApp/blob/main/api-docs.toml) | страницы `docs/api/` (`make api-docs`) |
 | Термины | [`glossary.md`](glossary.md) | тексты всех разделов |
 
-Руками не правятся `documentation/api/**`, `design/db.sql`, `design/schema.svg` и `design/erd.md`: их
+Руками не правятся `docs/api/**`, `design/db.sql`, `design/schema.svg` и `design/erd.md`: их
 перезапишут сборки.
 
 ## Состояние проекта
@@ -58,7 +58,7 @@ S3-шлюз.
 - Система на ранней стадии: проверяйте предположения по коду, а не по документам.
 - Схема БД — черновик: в исходном DDL неполные ограничения (статусы без `CHECK`, токены с уже истёкшим
   сроком), поэтому правда — чанжлог, а не `db.sql`.
-- `documentation/api/` — снимок того, что объявляет код сегодня, а не подписанный контракт.
+- `docs/api/` — снимок того, что объявляет код сегодня, а не подписанный контракт.
 - [`md-spec/`](md-spec/README.md) — пока рамка и примеры-эталоны: сам диалект не описан.
 - Открытые решения и открытые вопросы собраны в
   [`PROJECT.md`](https://github.com/DirtyDocsTeam/DocsApp/blob/main/.agents/PROJECT.md) и

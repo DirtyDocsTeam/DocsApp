@@ -5,9 +5,9 @@
 Скрипт разворачивает master-файл (`include`, `includeAll`, `sqlFile`) и собирает из него три
 производных артефакта:
 
-  * `documentation/design/db.sql` — единый DDL для чтения и прогона в psql;
-  * `documentation/design/erd.md` — страница диаграммы и таблица внешних ключей;
-  * `documentation/design/schema.svg` — векторная диаграмма; Mermaid доступен через --mermaid.
+  * `docs/design/db.sql` — единый DDL для чтения и прогона в psql;
+  * `docs/design/erd.md` — страница диаграммы и таблица внешних ключей;
+  * `docs/design/schema.svg` — векторная диаграмма; Mermaid доступен через --mermaid.
 
 Использование:
   python3 .github/scripts/db_schema.py            # пересобрать db.sql и erd.md
@@ -41,10 +41,10 @@ from erd_optimizer import (LayoutOptions, optimize_grid, route_all, hits_rect, o
 
 CHANGELOG_DIR = "backend/api/src/main/resources/db/changelog"
 MASTER = CHANGELOG_DIR + "/db.changelog-master.yaml"
-DB_SQL = "documentation/design/db.sql"
-ERD_MD = "documentation/design/erd.md"
-ERD_SVG = "documentation/design/schema.svg"
-LAYOUT_YAML = "documentation/design/layout.yaml"
+DB_SQL = "docs/design/db.sql"
+ERD_MD = "docs/design/erd.md"
+ERD_SVG = "docs/design/schema.svg"
+LAYOUT_YAML = "docs/design/layout.yaml"
 
 POSTGRES_IMAGE = "postgres:16-alpine"
 PG_CONTAINER = "docsapp-dbcheck-" + uuid.uuid4().hex[:12]
@@ -52,7 +52,7 @@ PG_CONTAINER = "docsapp-dbcheck-" + uuid.uuid4().hex[:12]
 SQL_HEADER = """-- DocsApp: схема базы данных.
 --
 -- Файл сгенерирован из Liquibase-чанжлога {changelog}/
--- Пересобрать: `make db-schema`. ERD: documentation/design/erd.md (`make db-erd`).
+-- Пересобрать: `make db-schema`. ERD: docs/design/erd.md (`make db-erd`).
 -- Руками не правим: правки перезапишутся, менять нужно чанжлог.
 --
 -- Состав:

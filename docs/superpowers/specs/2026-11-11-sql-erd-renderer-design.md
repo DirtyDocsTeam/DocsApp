@@ -10,7 +10,7 @@ make the DocsApp Liquibase schema easy to inspect in GitHub and the project wiki
 
 ## Goals
 
-- Generate `documentation/design/schema.svg` from the Liquibase-derived DDL alongside
+- Generate `docs/design/schema.svg` from the Liquibase-derived DDL alongside
   `db.sql` and the textual `erd.md`.
 - Draw each table as a named card with column type/name/key metadata and draw foreign
   keys as routed connectors between card edges.
@@ -51,10 +51,10 @@ make the DocsApp Liquibase schema easy to inspect in GitHub and the project wiki
 `db_schema.py` continues to parse the Liquibase SQL once and builds three generated
 artifacts:
 
-- `documentation/design/db.sql` — unchanged purpose;
-- `documentation/design/erd.md` — source-readable Mermaid plus FK table, retained as
+- `docs/design/db.sql` — unchanged purpose;
+- `docs/design/erd.md` — source-readable Mermaid plus FK table, retained as
   a text fallback;
-- `documentation/design/schema.svg` — the new canonical rendered diagram.
+- `docs/design/schema.svg` — the new canonical rendered diagram.
 
 Normal generation writes all stale artifacts. `--check` compares all three, exits
 non-zero when any is stale, and reports which paths need regeneration. `--render` is

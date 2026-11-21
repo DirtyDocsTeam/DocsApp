@@ -1,4 +1,4 @@
-# Синхронизация `documentation/` → GitHub Wiki.
+# Синхронизация `docs/` → GitHub Wiki.
 #
 # Что нужно один раз сделать руками (без этого job упадёт с понятной ошибкой):
 #   1. Settings → General → Features → включить Wiki и создать через UI хотя бы одну страницу:
@@ -7,13 +7,13 @@
 #      Fine-grained PAT права на вики не даёт — нужен именно классический.
 #   3. Settings → Secrets and variables → Actions → New repository secret с именем `WIKI_TOKEN`.
 #
-# Дальше всё автоматически: пуш в `main` с изменениями в `documentation/` (или ручной запуск) пересобирает
-# страницы из `documentation/**`, а также Home / Artifacts / _Sidebar / _Footer.
+# Дальше всё автоматически: пуш в `main` с изменениями в `docs/` (или ручной запуск) пересобирает
+# страницы из `docs/**`, а также Home / Artifacts / _Sidebar / _Footer.
 # Генератор — `.github/scripts/wiki_sync.py` (только stdlib, локально запускается так:
 # `python3 .github/scripts/wiki_sync.py --out /tmp/wiki-dry --no-dates`).
 #
 # Перед публикацией шаг `make api-docs` собирает контракты REST/GraphQL/gRPC из кода в
-# `documentation/api/` по правилам `api-docs.toml` (генератор — `.github/scripts/api_docs.py`).
+# `docs/api/` по правилам `api-docs.toml` (генератор — `.github/scripts/api_docs.py`).
 # Эти страницы в git не коммитятся: вики всегда отражает текущий коммит. Если сборка контрактов
 # падает, job останавливается до синхронизации — в вики остаётся предыдущая версия.
 
@@ -23,7 +23,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "documentation/**"
+      - "docs/**"
       - "backend/**"
       - "api-docs.toml"
       - "Makefile"
@@ -68,7 +68,7 @@ jobs:
       - name: Проверить, что артефакты схемы соответствуют Liquibase-чанжлогу
         run: make db-check
 
-      - name: Собрать контракты API (REST/GraphQL/gRPC) в documentation/api
+      - name: Собрать контракты API (REST/GraphQL/gRPC) в docs/api
         run: make api-docs
 
       - name: Собрать и запушить вики

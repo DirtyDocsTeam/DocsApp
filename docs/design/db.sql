@@ -1,7 +1,7 @@
 -- DocsApp: схема базы данных.
 --
 -- Файл сгенерирован из Liquibase-чанжлога backend/api/src/main/resources/db/changelog/
--- Пересобрать: `make db-schema`. ERD: documentation/design/erd.md (`make db-erd`).
+-- Пересобрать: `make db-schema`. ERD: docs/design/erd.md (`make db-erd`).
 -- Руками не правим: правки перезапишутся, менять нужно чанжлог.
 --
 -- Состав:
