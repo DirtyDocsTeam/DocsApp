@@ -9,7 +9,7 @@ import ru.dirtydocs.api.jobs.requests.JobType
 class JobExecutionServiceTest {
     @Test
     fun recordsTheEndpointAnnouncedByAWorker() {
-        val execution = JobExecutionService(
+        val execution = RegistryOnlyJobExecutionService(
             mock(DSLContext::class.java),
             mock(WorkerAssignmentClient::class.java),
         )
@@ -25,5 +25,24 @@ class JobExecutionServiceTest {
         assertEquals("worker.internal", worker.host)
         assertEquals(9000, worker.port)
         assertEquals(setOf(JobType.CONVERSION), worker.supportedJobTypes)
+    }
+
+    @Test
+    fun returnsOnlyWorkersThatSupportTheRequestedJobType() {
+        val execution = RegistryOnlyJobExecutionService(
+            mock(DSLContext::class.java),
+            mock(WorkerAssignmentClient::class.java),
+        )
+        execution.registerWorker("conversion-1", "conversion.internal", 9000, setOf(JobType.CONVERSION))
+        execution.registerWorker("validation-1", "validation.internal", 9001, setOf(JobType.VALIDATION))
+
+        assertEquals(listOf("validation-1"), execution.registeredWorkersFor(JobType.VALIDATION).map { it.id })
+    }
+
+    private class RegistryOnlyJobExecutionService(
+        dsl: DSLContext,
+        workerAssignments: WorkerAssignmentClient,
+    ) : JobExecutionService(dsl, workerAssignments) {
+        override fun dispatchQuery(): Long = 0
     }
 }

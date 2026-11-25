@@ -32,6 +32,9 @@ class JobExecutionService(
             supportedJobTypes = supportedJobTypes,
             announcedAt = Instant.now(),
         )
+        if (occupiedWorkers.containsKey(workerId)) return
+        // If the worker was not occupied, try to dispatch a job to it immediately.
+        dispatchQuery()
     }
 
     fun worker(workerId: String): RegisteredWorker? = workers[workerId]
@@ -47,11 +50,12 @@ class JobExecutionService(
         dsl.selectFrom(JobRequest.JOB_REQUEST)
             .where(JobRequest.JOB_REQUEST.STATUS.eq(JobStatus.QUEUED.dbValue))
             .and(JobRequest.JOB_REQUEST.DELETED_AT.isNull)
+            .and(JobRequest.JOB_REQUEST.DELIVERY_KEY.isNull)
             .and(JobRequest.JOB_REQUEST.TYPE.`in`(filter.map { it.dbValue }))
             .orderBy(JobRequest.JOB_REQUEST.CREATED_AT.asc())
 
-    fun dispatchQuery(): Boolean {
-        var dispatched = false
+    fun dispatchQuery(): Long {
+        var dispatched = 0L
         workers.entries
             .filterNot { occupiedWorkers.containsKey(it.key) }
             .forEach { (workerId, worker) ->
@@ -71,7 +75,7 @@ class JobExecutionService(
                     }, {
                         releaseAssignment(workerId, jobId, deliveryKey)
                     })
-                dispatched = true
+                dispatched++
             }
         return dispatched
     }
@@ -83,11 +87,15 @@ class JobExecutionService(
 
     /** Releases the worker assigned to a job after its execution is over or cancelled. */
     fun freeWorkerJob(jobId: Long) {
-        occupiedWorkers.entries.removeIf { it.value == jobId }
+        if (!occupiedWorkers.entries.removeIf { it.value == jobId }) return
+        // If the job was cancelled, the worker is no longer occupied.
+        dispatchQuery()
     }
 
     private fun freeWorkerJob(workerId: String) {
-        occupiedWorkers.remove(workerId)
+        if (occupiedWorkers.remove(workerId) == null) return
+        // If the worker was occupied, dispatch another job to it.
+        dispatchQuery()
     }
 
     private fun claimJobDelivery(jobId: Long, deliveryKey: String): Boolean =
@@ -101,13 +109,13 @@ class JobExecutionService(
             .execute() == 1
 
     private fun releaseAssignment(workerId: String, jobId: Long, deliveryKey: String) {
-        freeWorkerJob(workerId)
         dsl.update(JobRequest.JOB_REQUEST)
             .setNull(JobRequest.JOB_REQUEST.DELIVERY_KEY)
             .where(JobRequest.JOB_REQUEST.ID.eq(jobId))
             .and(JobRequest.JOB_REQUEST.DELIVERY_KEY.eq(deliveryKey))
             .and(JobRequest.JOB_REQUEST.STATUS.eq(JobStatus.QUEUED.dbValue))
             .execute()
+        freeWorkerJob(workerId)
     }
 }
 
