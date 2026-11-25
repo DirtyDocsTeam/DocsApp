@@ -8,6 +8,7 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.`when`
 import ru.dirtydocs.api.jobs.AnnounceJobStatusRequest
+import ru.dirtydocs.api.jobs.AnnounceWorkerRequest
 import ru.dirtydocs.api.jobs.JobStatusService
 import ru.dirtydocs.api.jobs.requests.JobStatus
 
@@ -15,7 +16,8 @@ class WorkerGrpcServiceTest {
     @Test
     fun rejectsUnknownStatusWithoutCallingTheJobService() {
         val statuses = mock(JobStatusService::class.java)
-        val response = WorkerGrpcService(statuses).announceJobStatus(
+        val workers = mock(WorkerAnnouncementController::class.java)
+        val response = WorkerGrpcService(statuses, workers).announceJobStatus(
             AnnounceJobStatusRequest.newBuilder()
                 .setJobId(42)
                 .setStatus("unknown")
@@ -30,7 +32,8 @@ class WorkerGrpcServiceTest {
     @Test
     fun rejectsAnAnnouncementWithoutADeliveryKey() {
         val statuses = mock(JobStatusService::class.java)
-        val response = WorkerGrpcService(statuses).announceJobStatus(
+        val workers = mock(WorkerAnnouncementController::class.java)
+        val response = WorkerGrpcService(statuses, workers).announceJobStatus(
             AnnounceJobStatusRequest.newBuilder()
                 .setJobId(42)
                 .setStatus(JobStatus.PROCESSING.dbValue)
@@ -44,8 +47,9 @@ class WorkerGrpcServiceTest {
     @Test
     fun forwardsValidAnnouncementWithItsDeliveryKey() {
         val statuses = mock(JobStatusService::class.java)
+        val workers = mock(WorkerAnnouncementController::class.java)
         `when`(statuses.announce(42, JobStatus.PROCESSING, "delivery")).thenReturn(true)
-        val response = WorkerGrpcService(statuses).announceJobStatus(
+        val response = WorkerGrpcService(statuses, workers).announceJobStatus(
             AnnounceJobStatusRequest.newBuilder()
                 .setJobId(42)
                 .setStatus(JobStatus.PROCESSING.dbValue)
@@ -55,5 +59,36 @@ class WorkerGrpcServiceTest {
 
         assertTrue(response.accepted)
         verify(statuses).announce(42, JobStatus.PROCESSING, "delivery")
+    }
+
+    @Test
+    fun recordsAWorkerAnnouncement() {
+        val statuses = mock(JobStatusService::class.java)
+        val workers = mock(WorkerAnnouncementController::class.java)
+        val response = WorkerGrpcService(statuses, workers).announceWorker(
+            AnnounceWorkerRequest.newBuilder()
+                .setWorkerId("conversion-1")
+                .setHost("worker.internal")
+                .setPort(9000)
+                .build(),
+        ).await().indefinitely()
+
+        assertTrue(response.accepted)
+        verify(workers).announce("conversion-1", "worker.internal", 9000)
+    }
+
+    @Test
+    fun rejectsWorkerAnnouncementWithoutAReachableEndpoint() {
+        val statuses = mock(JobStatusService::class.java)
+        val workers = mock(WorkerAnnouncementController::class.java)
+        val response = WorkerGrpcService(statuses, workers).announceWorker(
+            AnnounceWorkerRequest.newBuilder()
+                .setWorkerId("conversion-1")
+                .setHost("worker.internal")
+                .build(),
+        ).await().indefinitely()
+
+        assertFalse(response.accepted)
+        verifyNoInteractions(workers)
     }
 }

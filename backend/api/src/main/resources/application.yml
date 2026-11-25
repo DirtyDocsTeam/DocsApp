@@ -33,8 +33,3 @@ quarkus:
       url: ${DB_URL:jdbc:postgresql://localhost:5432/dirtydocs}
   jooq:
     dialect: POSTGRES
-  grpc:
-    clients:
-      worker:
-        host: ${WORKER_GRPC_HOST:localhost}
-        port: ${WORKER_GRPC_PORT:9000}
