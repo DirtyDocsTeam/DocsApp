@@ -2,7 +2,7 @@
 
 DocsApp is a web service for preparing and formatting documents. It converts Markdown with attachments into DOCX and PDF (ODT is a lower-priority target), applies reusable styles, validates compliance with a selected style, and returns an output file with a validation report. The primary audience is authors; registered users retain their styles and job history, administrators operate the platform, and API users integrate batch processing from tools such as CI/CD or Obsidian.
 
-This file states product intent only. The architecture is defined by the C4 context diagram in [`documentation/design/context.drawio`](../documentation/design/context.drawio) and decoded in [`documentation/design/design.md`](../documentation/design/design.md); where this file says less, the diagram wins.
+This file states product intent only. The architecture is defined by the C4 context diagram in [`docs/design/context.drawio`](../docs/design/context.drawio) and decoded in [`docs/design/design.md`](../docs/design/design.md); where this file says less, the diagram wins.
 
 ## Core capabilities
 
@@ -22,7 +22,7 @@ This file states product intent only. The architecture is defined by the C4 cont
 - `backend/s3-gateway/`: the C4 **S3 Gateway Plane** — Go. Exposes separate external paths for web-static assets and media artifacts, asks the API about the token and the object path over gRPC (`[ID → S3://path, Token validate]`), and reaches the store over the internal S3 path.
 - Workers are independent deployments, not modules of the API binary: `WorkerC-N` conversion (C#), `WorkerV-N` validation (C#/C++), `WorkerT-N` templating (Python), `WorkerG-N` style generation (Python).
 - `devops/`: container, Kubernetes, storage, and deployment configuration, plus operations tooling (Prometheus/Grafana, Loki) that the C4 context diagram does not draw.
-- `documentation/`: product, architecture, QA, and media references.
+- `docs/`: product, architecture, QA, and media references.
 - PostgreSQL (C4 `Main Database`) persists identity data, users, API tokens, styles, jobs, results, media metadata, and audit events.
 - SeaweedFS (C4 `Object storage`) holds inputs, attachments, outputs, and static web assets. Clients never address it directly: they receive a path or a signed link from the S3 gateway.
 - HAProxy Ingress is the single entry point: REST/GraphQL to the API, OIDC to Keycloak, object paths to the S3 gateway.
@@ -43,7 +43,7 @@ These used to be open questions; the diagram settles them, so they are not revis
 
 - **Trust model for direct S3 access.** Short-lived, job- and tenant-scoped signed URLs or temporary credentials; never proxy unrestricted bucket access to clients. The exact TTL and scope still need to be written down.
 - **External LLM usage.** Define consent, data minimization, redaction, retention, and an approved legal basis before enabling it. Documents and personal data must not be sent to it by default.
-- **REST contract publication.** If external clients are in scope, the REST surface must publish an OpenAPI contract; the generated `documentation/api/` pages are the current snapshot, not a signed-off contract.
+- **REST contract publication.** If external clients are in scope, the REST surface must publish an OpenAPI contract; the generated `docs/api/` pages are the current snapshot, not a signed-off contract.
 
 ## Job lifecycle
 
@@ -76,5 +76,5 @@ Processing must be safe to retry: avoid duplicate outputs and duplicate audit ev
 
 ## Known draft status
 
-- The database schema is an initial draft: constraints are incomplete (a `CHECK` clause referencing a non-existent column, tokens created already expired, statuses as unconstrained `varchar`) and it is not migration-ready. The Liquibase changelog in `backend/api/src/main/resources/db/changelog/` is the source of truth for the schema; `documentation/design/db.sql` is generated from it.
-- `documentation/api/` pages are generated snapshots of what the code declares today; they are not a published contract until the REST surface is signed off.
+- The database schema is an initial draft: constraints are incomplete (a `CHECK` clause referencing a non-existent column, tokens created already expired, statuses as unconstrained `varchar`) and it is not migration-ready. The Liquibase changelog in `backend/api/src/main/resources/db/changelog/` is the source of truth for the schema; `docs/design/db.sql` is generated from it.
+- `docs/api/` pages are generated snapshots of what the code declares today; they are not a published contract until the REST surface is signed off.

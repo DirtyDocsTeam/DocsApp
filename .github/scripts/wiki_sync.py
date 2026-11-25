@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Синхронизация documentation/ репозитория в GitHub Wiki.
+"""Синхронизация docs/ репозитория в GitHub Wiki.
 
 Что делает:
-  * documentation/**/*.md            → страницы вики (путь `a/b.md` → страница `a--b`), текст дословно,
+  * docs/**/*.md            → страницы вики (путь `a/b.md` → страница `a--b`), текст дословно,
                               но относительные ссылки переписываются (md → ссылка на страницу вики,
                               картинки → raw-URL для встраивания, прочие файлы → blob-URL);
-  * documentation/**/<артефакт>      → встраиваются картинкой, если формат отображаемый, иначе ссылкой;
+  * docs/**/<артефакт>      → встраиваются картинкой, если формат отображаемый, иначе ссылкой;
                               не упомянутые в тексте артефакты попадают в авто-блок «Файлы в этой папке»
                               и на страницу Artifacts;
   * Home.md, _Sidebar.md, _Footer.md, Artifacts.md — генерируются целиком (описание проекта, гайд,
@@ -39,7 +39,7 @@ IMAGE_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".avif"}
 DRAWIO_EXT = {".drawio", ".dio"}
 OTHER_VIEWABLE_EXT = {".pdf"}
 MARKER_TOKEN = "wiki-sync:managed"
-MARKER = "<!-- " + MARKER_TOKEN + " · файл генерируется из documentation/, правки в вики перезапишутся -->"
+MARKER = "<!-- " + MARKER_TOKEN + " · файл генерируется из docs/, правки в вики перезапишутся -->"
 
 HOME_FILE = "Home.md"
 ARTIFACTS_FILE = "Artifacts.md"
@@ -116,7 +116,7 @@ def git(*args: str, cwd: Path | None = None) -> str:
 
 
 def read_ignore(docs: Path) -> list[str]:
-    """documentation/.wikiignore — по одному fnmatch-шаблону на строку (как .gitignore, но проще)."""
+    """docs/.wikiignore — по одному fnmatch-шаблону на строку (как .gitignore, но проще)."""
     p = docs / ".wikiignore"
     if not p.exists():
         return []
@@ -129,7 +129,7 @@ def read_ignore(docs: Path) -> list[str]:
 class Docs:
     def __init__(self, root: Path, repo: str, ref: str, log_dates: bool = True):
         self.root = root
-        self.docs = root / "documentation"
+        self.docs = root / "docs"
         self.repo = repo
         self.ref = ref
         self._date_cache: dict[str, str] = {}
@@ -181,14 +181,15 @@ class Docs:
     def files(self) -> tuple[list[Path], list[Path]]:
         md, artifacts = [], []
         for p in sorted(self.docs.rglob("*")):
-            if not p.is_file() or self.ignored(p) or p.name.startswith("."):
+            hidden = any(part.startswith(".") for part in p.relative_to(self.docs).parts)
+            if not p.is_file() or self.ignored(p) or hidden:
                 continue
             (md if p.suffix.lower() == ".md" else artifacts).append(p)
         return md, artifacts
 
     # --- имена страниц ---
     def page_name(self, p: Path) -> str:
-        """documentation/a/b.md → `a--b`; documentation/a/README.md (или index.md) → `a` — страница-описание раздела."""
+        """docs/a/b.md → `a--b`; docs/a/README.md (или index.md) → `a` — страница-описание раздела."""
         rel = p.relative_to(self.docs).with_suffix("")
         parts = list(rel.parts)
         if len(parts) > 1 and parts[-1].lower() in {"readme", "index"}:
@@ -288,57 +289,13 @@ def strip_h1(text: str) -> tuple[str, str]:
 
 # ─────────────────────────── генерация вики ───────────────────────────
 
-def guide_md() -> str:
-    return """## Как добавить страницу
-
-1. Положите файл `documentation/<раздел>/<имя>.md` и запушьте в `main` — вики обновится сама (workflow `docs → wiki`).
-2. Первая строка — заголовок `# Название страницы`, дальше обычный Markdown.
-3. Имя файла — латиница, цифры, дефисы: `documentation/research/docx-style-extraction.md`.
-   Имя страницы в вики получается из пути: `documentation/research/docx-style-extraction.md` → `research--docx-style-extraction`
-   (раздел и имя соединяются `--`, вложенность растёт так же: `a/b/c.md` → `a--b--c`).
-4. Ссылки на соседние страницы пишите **относительными** — `[отчёт](../research/docx-style-extraction.md)`
-   или `[отчёт](docx-style-extraction.md)`: при синке они превращаются в ссылки вики.
-5. Внешние ссылки (`https://…`) и `#anchor` остаются как есть.
-6. Нужна страница-описание раздела — заведите `documentation/<раздел>/README.md` (или `index.md`): она
-   опубликуется как страница с именем раздела (`documentation/research/README.md` → `research`) и встанет первой в навигации.
-7. Страницы из вики править бесполезно — они перезаписываются из `documentation/`. Источник правды — репозиторий.
-
-## Как добавить артефакт (картинка, диаграмма, файл)
-
-1. Кладите файл в ту же папку `documentation/…`, имя — латиница/цифры/дефисы (`documentation/research/erd.svg`).
-2. Ссылайтесь на него из md относительным путём — тогда он появится там, где нужно:
-   `![ERD](erd.svg)` или `[Пояснение](poc/notes.pdf)`.
-3. Как это отображается в вики:
-
-| Формат | Что делает синк |
-|---|---|
-| `.png .jpg .jpeg .gif .webp .svg .bmp .avif` | ссылка на файл; встроить картинку можно только явно — `![подпись](erd.svg)` в тексте страницы |
-| `.drawio` / `.dio` | ссылка на исходник + «открыть в diagrams.net» |
-| `.pdf` | ссылка (GitHub показывает PDF в браузере) |
-| всё остальное (`.docx .zip .xlsx .py .sql` …) | ссылка на файл в репозитории |
-
-4. Файл, на который никто не сослался, всё равно попадёт в вики: в авто-блок **«Файлы в этой папке»**
-   под страницей раздела и в общий инвентарь **[Artifacts](Artifacts)** — в обоих местах он показан
-   ссылкой, без встраивания.
-5. Предпросмотр для `.drawio` делается экспортом: `drawio --export --format png documentation/x.drawio`.
-   Чтобы картинка появилась на странице, сослайтесь на неё в тексте: `![Схема](x.png)`.
-6. Ограничения: файлы больше ~50 МБ в git не кладём (для тяжёлых — release assets или S3 и обычная ссылка);
-   секреты, токены и персональные данные в `documentation/` не коммитим.
-
-## Как это работает
-
-| Что | Откуда | Где в вики |
-|---|---|---|
-| Страницы | `documentation/**/*.md` | по одной странице на файл, ссылки переписаны под вики |
-| Артефакты | все файлы `documentation/**`, кроме `.md` | ссылки в авто-блоке и в `Artifacts`; картинка встраивается только явной ссылкой `![]()` |
-| Главная и навигация | генерируются | `Home`, `_Sidebar`, `_Footer`, `Artifacts` |
-| Описание проекта | `documentation/README.md` (если есть), иначе встроенный текст | блок «О проекте» на главной |
-
-Сгенерированные страницы помечены комментарием `wiki-sync:managed`: их перезаписывает workflow,
-а страницы, удалённые из `documentation/`, из вики вычищаются. Страницы, созданные руками (без пометки), не трогаются.
-Исключить файл/папку из синка можно строкой-шаблоном в `documentation/.wikiignore`
-(например `poc/*` или `*.draft.md`).
-"""
+def guide_md(guide_page: str | None) -> str:
+    """Правила каталога живут на отдельной странице (`docs/contributing.md`)."""
+    if not guide_page:
+        return ""
+    return ("## Как вести документацию\n\n"
+            "Как добавить страницу или артефакт, что собирается скриптами, как обновляется вики и чего "
+            "в каталоге быть не должно — на странице **[Как вести документацию](%s)**." % guide_page)
 
 
 def build(docs: Docs) -> dict[str, str]:
@@ -370,16 +327,18 @@ def build(docs: Docs) -> dict[str, str]:
         pages[name + ".md"] = text.rstrip() + "\n\n" + MARKER + "\n"
 
     pages[HOME_FILE] = home_md(docs, published, page_of, listed, intro) + "\n" + MARKER + "\n"
-    pages[ARTIFACTS_FILE] = artifacts_md(docs, listed) + "\n" + MARKER + "\n"
+    guide_page = page_of.get((docs.docs / "contributing.md").resolve())
+    pages[ARTIFACTS_FILE] = artifacts_md(docs, listed, guide_page) + "\n" + MARKER + "\n"
     pages[SIDEBAR_FILE] = sidebar_md(docs, published, page_of) + "\n" + MARKER + "\n"
     pages[FOOTER_FILE] = footer_page_md(docs) + "\n" + MARKER + "\n"
     return pages
 
 
 def artifacts_footer(docs: Docs, page: Path, artifacts: list[Path], mentioned: set[str]) -> str:
+    """Авто-блок «Файлы в этой папке»: артефакты, лежащие непосредственно рядом со страницей."""
     folder = page.parent
     local = [a for a in artifacts
-             if folder in a.parents and a.as_posix() not in mentioned]
+             if a.parent == folder and a.as_posix() not in mentioned]
     if not local:
         return ""
     lines = ["", "---", "", '<a id="files"></a>', "", "### Файлы в этой папке", "",
@@ -440,31 +399,31 @@ def home_md(docs: Docs, published: list[Path], page_of: dict[Path, str],
         "## Быстрые ссылки",
         "",
         "- [Репозиторий](https://github.com/%s) · [Issues](https://github.com/%s/issues)" % (docs.repo, docs.repo),
-        "- [Все артефакты](Artifacts) · [documentation/ в репозитории](https://github.com/%s/tree/%s/documentation)" % (docs.repo, docs.ref),
+        "- [Все артефакты](Artifacts) · [docs/ в репозитории](https://github.com/%s/tree/%s/docs)" % (docs.repo, docs.ref),
         "",
-        guide_md(),
+        guide_md(page_of.get((docs.docs / "contributing.md").resolve())),
         "",
         "---",
         "",
-        "_Главная сгенерирована автоматически из `documentation/`. Описание проекта берётся из `documentation/README.md`._",
+        "_Главная сгенерирована автоматически из `docs/`. Описание проекта берётся из `docs/README.md`._",
     ])
 
 
-def artifacts_md(docs: Docs, artifacts: list[Path]) -> str:
+def artifacts_md(docs: Docs, artifacts: list[Path], guide_page: str | None = None) -> str:
     if not artifacts:
-        return "# Артефакты\n\n_В `documentation/` пока нет файлов, кроме Markdown._"
+        return "# Артефакты\n\n_В `docs/` пока нет файлов, кроме Markdown._"
     groups: dict[str, list[Path]] = {}
     for a in artifacts:
         group = a.parent.relative_to(docs.docs).as_posix()
-        groups.setdefault("documentation/" if group == "." else "documentation/" + group + "/", []).append(a)
+        groups.setdefault("docs/" if group == "." else "docs/" + group + "/", []).append(a)
 
     total = sum(a.stat().st_size for a in artifacts)
     lines = ["# Артефакты", "",
-             "Инвентарь файлов из `documentation/` (всё, что не `.md`): только ссылки на файлы в репозитории, "
+             "Инвентарь файлов из `docs/` (всё, что не `.md`): только ссылки на файлы в репозитории, "
              "без встраивания. Всего **%d** %s, %s." % (
                  len(artifacts), plural(len(artifacts), "файл", "файла", "файлов"), human_size(total)), "",
-             "Как добавить свой артефакт — в разделе [«Как добавить артефакт»](Home#как-добавить-артефакт-картинка-диаграмма-файл) "
-             "на главной.", ""]
+             *(["Как добавить свой артефакт — на странице "
+                "[«Как вести документацию»](%s#как-добавить-артефакт)." % guide_page] if guide_page else []), ""]
     for group in sorted(groups):
         lines += ["## `%s`" % group, ""]
         for a in groups[group]:
@@ -531,7 +490,7 @@ def sidebar_md(docs: Docs, published: list[Path], page_of: dict[Path, str]) -> s
 
 
 def footer_page_md(docs: Docs) -> str:
-    return ("Документация синхронизируется из [`documentation/`](https://github.com/%s/tree/%s/documentation) · "
+    return ("Документация синхронизируется из [`docs/`](https://github.com/%s/tree/%s/docs) · "
             "сборка по коммиту от %s · править нужно в репозитории, правки в вики перезапишутся."
             % (docs.repo, docs.ref, docs.commit_date()))
 
@@ -566,10 +525,10 @@ def clone_wiki(repo: str, token: str, dest: Path) -> None:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="documentation/ → GitHub Wiki")
+    ap = argparse.ArgumentParser(description="docs/ → GitHub Wiki")
     ap.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY", "DirtyDocsTeam/DocsApp"))
     ap.add_argument("--ref", default=os.environ.get("GITHUB_REF_NAME", "main"))
-    ap.add_argument("--root", default=".", help="корень репозитория (в нём должна быть documentation/)")
+    ap.add_argument("--root", default=".", help="корень репозитория (в нём должна быть docs/)")
     ap.add_argument("--wiki", help="локальная папка вики вместо клонирования (для отладки)")
     ap.add_argument("--out", help="записать результат в пустую папку, ничего не пушить (dry-run)")
     ap.add_argument("--push", action="store_true", help="закоммитить и запушить изменения в вики")
@@ -577,8 +536,8 @@ def main() -> int:
     args = ap.parse_args()
 
     root = Path(args.root).resolve()
-    if not (root / "documentation").is_dir():
-        print("documentation/ не найдена в %s — синхронизировать нечего." % root)
+    if not (root / "docs").is_dir():
+        print("docs/ не найдена в %s — синхронизировать нечего." % root)
         return 0
 
     docs = Docs(root, args.repo, args.ref, log_dates=not args.no_dates)

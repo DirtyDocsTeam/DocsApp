@@ -4,7 +4,7 @@
 # Worker-G, tooling), TypeScript/React (frontend SPA), Go (S3 gateway),
 # Kotlin/JVM (optional services), SQL/PostgreSQL, and container/Kubernetes config
 # in devops/. Keep tracked files that are legitimate sources or fixtures
-# (documentation/design/*.sql, *.svg, *.drawio, schema images) out of these rules.
+# (docs/design/*.sql, *.svg, *.drawio, schema images) out of these rules.
 
 # ---------------------------------------------------------------------------
 # Secrets and local configuration
@@ -75,11 +75,11 @@ pnpm-debug.log*
 
 # ---------------------------------------------------------------------------
 # Сгенерированные контракты API
-# `documentation/api/` собирается из кода (`make api-docs` →
+# `docs/api/` собирается из кода (`make api-docs` →
 # `.github/scripts/api_docs.py` по правилам `api-docs.toml`) и публикуется в вики.
 # В git не коммитится: единственный источник правды — код и конфиг.
 # ---------------------------------------------------------------------------
-/documentation/api/
+/docs/api/
 
 # ---------------------------------------------------------------------------
 # Python (backend workers, automation, .github/scripts)

@@ -31,7 +31,7 @@ documentation generator, its generated design artifacts, tests, and references.
 
 ## Completion checks
 
-- `make db-schema` generates byte-stable `documentation/design/schema.svg`.
+- `make db-schema` generates byte-stable `docs/design/schema.svg`.
 - `make db-check` validates `db.sql`, `erd.md`, and `schema.svg`.
 - The committed diagram has no table-card overlaps or FK lines through non-endpoint cards.
 - Tests demonstrate the supplied score weights and collision rules.
