@@ -14,27 +14,31 @@ import java.time.OffsetDateTime
 /**
  * Applies a worker status announcement exactly once per status value.
  *
- * The future mTLS gRPC adapter must authenticate the worker and invoke this
- * service only after validating its delivery key.
+ * The gRPC adapter authenticates the worker at the transport boundary and
+ * supplies the delivery key issued with the assignment.
  */
 @ApplicationScoped
 class JobStatusService(
     private val dsl: DSLContext,
     private val events: DomainEventPublisher,
 ) {
-    fun announce(jobId: Long, status: JobStatus): Boolean {
-        val current = dsl.select(JOB_REQUEST.STATUS)
+    fun announce(jobId: Long, status: JobStatus, deliveryKey: String): Boolean {
+        if (deliveryKey.isBlank()) return false
+        val current = dsl.select(JOB_REQUEST.STATUS, JOB_REQUEST.DELIVERY_KEY)
             .from(JOB_REQUEST)
             .where(JOB_REQUEST.ID.eq(jobId))
             .and(deletedAt.isNull)
-            .fetchOne(JOB_REQUEST.STATUS)
-            ?.let(JobStatus::fromDb)
+            .fetchOne()
             ?: return false
-        if (!JobStatusTransitions.canTransition(current, status)) return false
+        if (current[JOB_REQUEST.DELIVERY_KEY] != deliveryKey) return false
+        val currentStatus = JobStatus.fromDb(requireNotNull(current[JOB_REQUEST.STATUS]))
+        if (currentStatus == status) return true
+        if (!JobStatusTransitions.canTransition(currentStatus, status)) return false
         val changed = dsl.update(JOB_REQUEST)
             .set(JOB_REQUEST.STATUS, status.dbValue)
             .where(JOB_REQUEST.ID.eq(jobId))
-            .and(JOB_REQUEST.STATUS.eq(current.dbValue))
+            .and(JOB_REQUEST.STATUS.eq(currentStatus.dbValue))
+            .and(JOB_REQUEST.DELIVERY_KEY.eq(deliveryKey))
             .and(deletedAt.isNull)
             .execute()
         if (changed != 1) return false

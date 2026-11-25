@@ -1,4 +1,8 @@
 quarkus:
+  generate-code:
+    grpc:
+      kotlin:
+        generate: false
   http:
     auth:
       proactive: false
@@ -29,3 +33,8 @@ quarkus:
       url: ${DB_URL:jdbc:postgresql://localhost:5432/dirtydocs}
   jooq:
     dialect: POSTGRES
+  grpc:
+    clients:
+      worker:
+        host: ${WORKER_GRPC_HOST:localhost}
+        port: ${WORKER_GRPC_PORT:9000}
