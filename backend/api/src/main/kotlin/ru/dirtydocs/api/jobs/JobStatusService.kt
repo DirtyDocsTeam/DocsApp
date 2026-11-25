@@ -7,6 +7,7 @@ import ru.dirtydocs.api.generated.jooq.tables.references.JOB_MEDIA
 import ru.dirtydocs.api.generated.jooq.tables.references.JOB_REQUEST
 import ru.dirtydocs.api.generated.jooq.tables.references.MEDIA
 import ru.dirtydocs.api.jobs.requests.JobStatus
+import ru.dirtydocs.api.jobs.worker.JobExecutionService
 import ru.dirtydocs.api.subscriptions.DomainEventPublisher
 import ru.dirtydocs.api.subscriptions.JobStatusChange
 import java.time.OffsetDateTime
@@ -21,6 +22,7 @@ import java.time.OffsetDateTime
 class JobStatusService(
     private val dsl: DSLContext,
     private val events: DomainEventPublisher,
+    private val execution: JobExecutionService,
 ) {
     fun announce(jobId: Long, status: JobStatus, deliveryKey: String): Boolean {
         if (deliveryKey.isBlank()) return false
@@ -48,7 +50,10 @@ class JobStatusService(
             .where(JOB_REQUEST.ID.eq(jobId))
             .fetchOne()
             ?: return false
-        if (status in JobStatusTransitions.terminal) expireUnusedNonCacheableMedia(jobId)
+        if (status in JobStatusTransitions.terminal) {
+            execution.freeWorkerJob(jobId)
+            expireUnusedNonCacheableMedia(jobId)
+        }
         events.publishJob(
             requireNotNull(job[JOB_REQUEST.USER_ID]),
             JobStatusChange(

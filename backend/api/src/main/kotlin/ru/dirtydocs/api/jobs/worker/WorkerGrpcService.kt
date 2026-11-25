@@ -9,17 +9,25 @@ import ru.dirtydocs.api.jobs.AnnounceJobStatusResponse
 import ru.dirtydocs.api.jobs.JobStatusService
 import ru.dirtydocs.api.jobs.MutinyWorkerServiceGrpc
 import ru.dirtydocs.api.jobs.requests.JobStatus
+import ru.dirtydocs.api.jobs.requests.JobType
 
 /** Receives durable status announcements from workers assigned by Main API. */
 @GrpcService
 class WorkerGrpcService(
     private val jobStatuses: JobStatusService,
-    private val workerAnnouncements: WorkerAnnouncementController,
+    private val jobExecution: JobExecutionService,
 ) : MutinyWorkerServiceGrpc.WorkerServiceImplBase() {
     override fun announceWorker(request: AnnounceWorkerRequest): Uni<AnnounceWorkerResponse> {
-        val accepted = request.workerId.isNotBlank() && request.host.isNotBlank() && request.port in 1..65535
+        val supportedJobTypes = request.supportedJobTypesList.mapNotNull { jobType ->
+            runCatching { JobType.fromDb(jobType) }.getOrNull()
+        }.toSet()
+        val accepted = request.workerId.isNotBlank() &&
+            request.host.isNotBlank() &&
+            request.port in 1..65535 &&
+            supportedJobTypes.isNotEmpty() &&
+            supportedJobTypes.size == request.supportedJobTypesCount
         if (accepted) {
-            workerAnnouncements.announce(request.workerId, request.host, request.port)
+            jobExecution.registerWorker(request.workerId, request.host, request.port, supportedJobTypes)
         }
         return Uni.createFrom().item(
             AnnounceWorkerResponse.newBuilder().setAccepted(accepted).build(),
