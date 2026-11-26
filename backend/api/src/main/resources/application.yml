@@ -1,4 +1,8 @@
 quarkus:
+  generate-code:
+    grpc:
+      kotlin:
+        generate: false
   http:
     auth:
       proactive: false

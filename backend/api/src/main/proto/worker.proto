@@ -8,6 +8,7 @@ package worker;
 
 service WorkerService {
   rpc AssignJob (AssignJobRequest) returns (AssignJobResponse);
+  rpc AnnounceWorker (AnnounceWorkerRequest) returns (AnnounceWorkerResponse);
   rpc AnnounceJobStatus (AnnounceJobStatusRequest) returns (AnnounceJobStatusResponse);
 }
 
@@ -17,6 +18,17 @@ message AssignJobRequest {
 }
 
 message AssignJobResponse {
+  bool accepted = 1;
+}
+
+message AnnounceWorkerRequest {
+  string worker_id = 1;
+  string host = 2;
+  uint32 port = 3;
+  repeated string supported_job_types = 4;
+}
+
+message AnnounceWorkerResponse {
   bool accepted = 1;
 }
 

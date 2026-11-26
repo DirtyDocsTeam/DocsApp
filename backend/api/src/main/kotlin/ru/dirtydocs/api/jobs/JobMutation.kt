@@ -18,6 +18,7 @@ import ru.dirtydocs.api.generated.jooq.tables.references.JOB_REQUEST
 import ru.dirtydocs.api.generated.jooq.tables.references.MEDIA
 import ru.dirtydocs.api.jobs.requests.JobRequest
 import ru.dirtydocs.api.jobs.requests.JobStatus
+import ru.dirtydocs.api.jobs.worker.JobExecutionService
 import ru.dirtydocs.api.media.MediaLeaseService
 import ru.dirtydocs.api.subscriptions.DomainEventPublisher
 import ru.dirtydocs.api.subscriptions.JobStatusChange
@@ -38,6 +39,7 @@ class JobMutation(
     private val tokenAccess: ApiTokenAccessAuthorizer,
     private val events: DomainEventPublisher,
     private val leases: MediaLeaseService,
+    private val execution: JobExecutionService,
 ) {
     @Mutation
     @Description("Create a job and report media hashes that the gateway must upload")
@@ -134,8 +136,10 @@ class JobMutation(
             .set(deletedAt, OffsetDateTime.now())
             .set(JOB_REQUEST.STATUS, JobStatus.CANCELLED.dbValue)
             .where(owner.and(deletedAt.isNull).and(JOB_REQUEST.STATUS.notIn(terminalStatuses)))
-            .execute()
-        if (cancelled == 1) {
+            .returning(JOB_REQUEST.ID)
+            .fetchOne(JOB_REQUEST.ID)
+        if (cancelled != null) {
+            execution.freeWorkerJob(cancelled)
             events.publishJob(requireViewer(), JobStatusChange(externalId, JobStatus.CANCELLED, OffsetDateTime.now()))
             return true
         }
